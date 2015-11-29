@@ -5,24 +5,28 @@
 
 \begin{abstract}
 
+高速发展的数据分析应用技术让数据的潜在价值得到了充分的利用，但是新的数据挖掘模型和攻击模式的出现使得传统的隐私保护方式变得不那么安全可靠了。一方面，数据拥有者在发布数据时需要对隐私信息进行特殊处理；另一方面，发布后的数据将应用于各类数据挖掘算法，此时也应该保障隐私安全。对数据拥有者而言，对于各种无法预计的攻击及分析模式，如何设计强力的隐私保障算法成了隐私保护问题中的难点。
+
+针对上述情况，直到差分隐私技术的提出才从根本上解决这个问题。它不关心具体的应用背景，即使在最坏的情况下攻击者已经掌握了除了某条记录之外的所有记录信息，也无法推断出该条记录的隐私信息情况。但由于基于失真技术的加噪操作会使得差分隐私技术在保护隐私的同时影响了数据的可用性，降低了后续应用的分析准确度，这就对差分隐私的算法设计提出了新的要求。
+
+本文基于差分隐私技术在数据挖掘分类算法中的应用，就查询范围和数据集维度引起的噪音叠加问题，设计一种利用数据的一致性特性对噪音分布进行优化的非交互式差分隐私模型Consistent DiffGen，使得在保障数据集隐私的前提下，有效提升发布数据在分类应用中的可用性。
+
+本文的主要工作包括：1）基于决策树分类模型，研究和分析了差分隐私技术在数据挖掘分类算法中的应用，并归纳存在的隐私代价损耗和维度灾难问题。2）基于匿名化的非交互式差分隐私数据发布框架，分析在后续的分类应用中存在着和列联表模式一样的噪音叠加问题。3）通过重匿名属性值间存在的一致性特性，设计一种调整算法，优化噪音分布已达到提升分类应用准确度的目标。
 
 
-\keywords{\large 上海交大 \quad 饮水思源 \quad 爱国荣校}
+%现在各种数据面临的问题：1，发布的数据要不能泄露隐私。2，经得起各种数据挖掘分析。
+%关注点：1，如何满足差分隐私。2，发布出的数据可用性的保障。
+%厉害之处：保 护 方 法 可 以 确保 在 某 一 数 据 集 中 插 入 或 者 删 除 一 条 记 录 的 操 作不 会 影 响 任 何 计 算 的 输 出 结 果 另 外该 保 护 模 型不关心攻击者所具有的背景知识即 使 攻 击 者 已经掌握除某一条记录之外的所有记录的信息 该记 录 的 隐 私 也 无 法 被 披 露 
+%两种数据保护框架：交互式和非交互式
+%关键字：决策树，k匿名
+%1，决策树的基本用法，fireman，然后匿名化得diffGen。
+
+\keywords{\large 隐私保护 \quad 饮水思源 \quad 爱国荣校}
 \end{abstract}
 
 \begin{englishabstract}
 
-An imperial edict issued in 1896 by Emperor Guangxu, established Nanyang Public School in Shanghai. The normal school, school of foreign studies, middle school and a high school were established. Sheng Xuanhuai, the person responsible for proposing the idea to the emperor, became the first president and is regarded as the founder of the university.
 
-During the 1930s, the university gained a reputation of nurturing top engineers. After the foundation of People's Republic, some faculties were transferred to other universities. A significant amount of its faculty were sent in 1956, by the national government, to Xi'an to help build up Xi'an Jiao Tong University in western China. Afterwards, the school was officially renamed Shanghai Jiao Tong University.
-
-Since the reform and opening up policy in China, SJTU has taken the lead in management reform of institutions for higher education, regaining its vigor and vitality with an unprecedented momentum of growth. SJTU includes five beautiful campuses, Xuhui, Minhang, Luwan Qibao, and Fahua, taking up an area of about 3,225,833 m2. A number of disciplines have been advancing towards the top echelon internationally, and a batch of burgeoning branches of learning have taken an important position domestically.
-
-Today SJTU has 31 schools (departments), 63 undergraduate programs, 250 masters-degree programs, 203 Ph.D. programs, 28 post-doctorate programs, and 11 state key laboratories and national engineering research centers.
-
-SJTU boasts a large number of famous scientists and professors, including 35 academics of the Academy of Sciences and Academy of Engineering, 95 accredited professors and chair professors of the "Cheung Kong Scholars Program" and more than 2,000 professors and associate professors.
-
-Its total enrollment of students amounts to 35,929, of which 1,564 are international students. There are 16,802 undergraduates, and 17,563 masters and Ph.D. candidates. After more than a century of operation, Jiao Tong University has inherited the old tradition of "high starting points, solid foundation, strict requirements and extensive practice." Students from SJTU have won top prizes in various competitions, including ACM International Collegiate Programming Contest, International Mathematical Contest in Modeling and Electronics Design Contests. Famous alumni include Jiang Zemin, Lu Dingyi, Ding Guangen, Wang Daohan, Qian Xuesen, Wu Wenjun, Zou Taofen, Mao Yisheng, Cai Er, Huang Yanpei, Shao Lizi, Wang An and many more. More than 200 of the academics of the Chinese Academy of Sciences and Chinese Academy of Engineering are alumni of Jiao Tong University.
 
 \englishkeywords{\large SJTU, master thesis, XeTeX/LaTeX template}
 \end{englishabstract}
