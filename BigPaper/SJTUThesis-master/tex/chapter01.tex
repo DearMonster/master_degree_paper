@@ -3,157 +3,54 @@
 %% chapter01.tex for SJTU Master Thesis
 %%==================================================
 
-\chapter{这是什么}
-\label{chap:what}
+\chapter{绪论}
+\label{chap:introduction}
 
-这是上海交通大学(非官方)学位论文 \LaTeX 模板，当前版本是 \version 。
+\section{引言}
+\label{sec:objective}
+隐私是一种与公共、群体利益无关，不便或者不愿他人知道的、应予以保密的信息，是不以他人是否承认或评价为转移的存在。从人类有意识开始，隐私意识便是最先表现出来的本能特征，伴随着时代文明的发展，人类具有越来越强的隐私保护意识。“数据时代”的飞速发展使得信息数据的采集、存储和发布变得更加方便快捷，海量数据的处理技术以及数据挖掘、机器学习算法的应用使得数据的共享和分析变得更加高效准确，与此同时新的隐私攻击手段，黑客技术也在不断涌现。可见科技和时代的发展在带给我们高品质生活的同时，数据中的隐私保护问题面临着愈加严峻的挑战。
+本课题基于最高隐私保障的差分隐私技术，通过设计对高纬度查询问题具有良好扩展性的非交互式差分隐私匿名算法，有效提升了发布数据在后续数据挖掘分类算法中的分类准确度。本章节将简要介绍相关的课题背景知识，总结各类隐私保护算法和面向数据挖掘分类问题的研究现状，最后明确研究目标和所要解决的问题。
 
-最早的一版学位模板是一位热心的物理系同学制作的。
-那份模板参考了自动化所学位论文模板，使用了CASthesis.cls文档类，中文字符处理则采用当时最为流行的 \CJKLaTeX 方案。
-我根据交大研究生院对学位论文的要求
-\footnote{\url{http://www.gs.sjtu.edu.cn/policy/fileShow.ahtml?id=130}}
-，结合少量个人审美喜好，完成了一份基本可用的交大 \LaTeX 学位论文模板。
-但是，搭建一个 \CJKLaTeX 环境并不简单，单单在Linux下配置环境和添加中文字体，就足够让新手打退堂鼓。
-在William Wang的建议下，我开始着手把模板向 \XeTeX 引擎移植。
-他完成了最初的移植，多亏了他出色的工作，后续的改善工作也得以顺利进行。
 
-随着我对 \LaTeX 系统认知增加，我又断断续续做了一些完善模板的工作，在原有硕士学位论文模板的基础上完成了交大学士和博士学位论文模板。
+\section{课题研究背景}
 
-现在，交大学位论文模板SJTUTHesis代码在github
-\footnote{\url{https://github.com/weijianwen/SJTUThesis}}
-上维护。
-你可以\href{https://github.com/weijianwen/SJTUThesis/issues}{在github上开issue}
-、或者在\href{https://bbs.sjtu.edu.cn/bbsdoc?board=TeX_LaTeX}{水源LaTeX版}发帖来反映遇到的问题。
+\subsection{隐私及隐私保护}  %隐私的定义，度量，泄露风险及隐私保护研究方向
 
-\section{使用模板}
+隐私指的是个体不愿被外界获悉的敏感属性，比如个人的病理特征，资产状况，家庭住址等。隐私分为两类\cite{Defining Privacy for Data}：（1）个人隐私(individual privacy)：任何可以直接或间接标识特定人物且不愿被披露的信息，可以是个人的物理信息，生理信息或社会属性信息等。（2）共同隐私(corporate privacy)：包含了所有人共同的个人隐私的信息，如工厂工人的薪资分布。
 
-\subsection{准备工作}
-\label{sec:requirements}
+隐私的保护程度可以用隐私的“披露风险”(disclosure risk)\cite{l-diversity}来度量，披露风险越高意味着隐私保护程度越低。披露风险是与攻击者所具备的背景知识(background knowledge)相关的\cite{面向数据库应用的隐私保护研究综述},若s表示隐私信息，Pr[E]表示事件E发生的概率，那么在公布背景知识E的前提下隐私信息s披露的风险\textsc{R}(s,E)表示为
+\[
+	\textsc{R}(s,E) = Pr(E_{s}).
+\]
+披露风险\textsc{R}(s,E)可以用来度量隐私保护程度，如$l$-diversity算法\cite{l-diversity}保证隐私披露风险不超过1/$l$，$m$-Invariance算法\cite{m-Invariance}的披露风险不超过1/$m$。
 
-要使用这个模板撰写学位论文，需要在\emph{TeX系统}、\emph{中英文字体}、\emph{TeX技能}上有所准备。
+隐私保护的研究方向是由具体应用领域的需求来决定。面向数据挖掘类应用的隐私保护技术主要是研究针对某类数据挖掘算法，根据其特性设计出适应性良好的隐私保护算法，如Clustering\cite{clustering}算法；基于数据发布的隐私保护技术，主要是通过泛化或加密技术发布处理后的数据提供给各类应用，如一系列匿名化算法\cite{multidimensional k anonymity}；面向分布式环境下的隐私保护技术，如在智能电网中的应用\cite{Distributed Privacy}。
 
-\begin{itemize}[noitemsep,topsep=0pt,parsep=0pt,partopsep=0pt]
-	\item {\TeX}系统：所使用的{\TeX}系统要支持 \XeTeX 引擎，且带有ctex 2.x宏包，以2015年的\emph{完整}TeXLive、MacTeX发行版为佳。
-	\item 中英文字体：操作系统中需要安装\footnote{在Windows、Mac OS X 以及 Linux 上安装额外的字体，可以参考\href{https://www.searchfreefonts.com/articles/how-to-install-fonts.htm}{“How to install fonts?”}。
-}TeX Gyre Termes字体\footnote{\url{http://www.gust.org.pl/projects/e-foundry/tex-gyre/termes}}和四款Adobe中文字体
-\footnote{请从合法渠道获得Adobe字体。}：AdobeSongStd、AdobeKaitiStd、AdobeHeitiStd、AdobeFangsongStd。
-	\item TeX技能：尽管提供了对模板的必要说明，但这不是一份“ \LaTeX 入门文档”。在使用前请先通读其他入门文档。
-	\item 针对Windows用户的额外需求：学位论文模本分别使用git和GNUMake进行版本控制和构建，建议从Cygwin\footnote{\url{http://cygwin.com}}安装这两个工具。
-\end{itemize}
+隐私保护手段大体上分为4类\cite{面向数据库应用的隐私保护研究综述}：（1）基于数据失真(distorting)的技术，如通过添加噪音(noise)的方式达到模糊敏感数据的目的，同时保持数据集的统计特征。（2）基于数据加密技术隐藏敏感数据。（3）基于限制发布的保护技术，如泛化数据域。（4）结合以上三种方式的优点生成的新方法。
 
-\subsection{模板选项}
-\label{sec:thesisoption}
 
-sjtuthesis提供了一些常用选项，在thesis.tex在导入sjtuthesis模板类时，可以组合使用。
-这些选项包括：
+\subsection{差分隐私背景} %交互和非交互框架，隐私代价分配和消耗 列联表 直方图
 
-\begin{itemize}[noitemsep,topsep=0pt,parsep=0pt,partopsep=0pt]
-\item 学位类型：bachelor(学位)、master(硕士)、doctor(博士)，是必选项。
-\item 中国字体：adobefonts(Adobe中文字体)、winfonts(使用Windows下的中文字体，该选项未在Linux/Mac下测试)。
-\item 正文字号：cs4size(小四)、c5size(五号)。
-\item 盲审选项：使用review选项后，论文作者、学号、导师姓名、致谢、发表论文和参与项目将被隐去。
-\end{itemize}
+差分隐私不同于传统的隐私保护技术，它对隐私披露风险给出了严谨的量化证明，并且定义了严格的攻击模式，因此不关心攻击者所获取的背景知识。通过拉普拉斯加噪机制\cite{Dwork Calibrating}设计满足差分隐私定义的算法，就能够给数据提供最高级别的隐私保障力度。差分隐私技术的研究主要在于两个方面：（1）如何设计满足差分隐私定义的隐私保护算法。（2）如何减少噪音扰动，保证加噪后数据的高可用性。
 
-\subsection{编译模板}
-\label{sec:process}
+差分隐私保护框架分为两种：交互式框架和非交互式框架，如下图\ref{fig:interactive framework}和图\ref{fig:non-interactive framework}所示。在交互式框架中，用户提交查询请求给数据库之后，数据库的应答作为某种差分隐私处理算法的输入，返回输出结果给用户。这个过程中差分隐私处理算法成为了用户和数据库之间的查询接口，但经过一定数量的查询之后耗尽隐私预算$\varepsilon$，对于之后的查询就无法保证隐私保护质量了，因此不再满足差分隐私定义。
+在非交互式框架中，数据库先将包含隐私信息的原数据集交于差分隐私算法处理，接着发布整个处理后数据集给用户，或者采用常规数据库查询模式给予应答。这个离线模式的框架具有诸多优点，并且不存在隐私预算耗尽的问题，更多的研究点在于考虑如何提升发布数据可用性和分析准确度。
 
-模板默认使用GNUMake构建，GNUMake将调用latemk工具自动完成模板多轮编译：
+\begin{figure}[!htp]
+	\centering
+	\includegraphics[width=5in]{chap1/interactive}
+	\bicaption[fig:interactive framework]{图}{交互式框架}{Fig.}{interactive framework}
+\end{figure}
 
-\begin{lstlisting}[basicstyle=\small\ttfamily, caption={编译模板}, numbers=none]
-make clean thesis.pdf
-\end{lstlisting}
+\begin{figure}[!htp]
+	\centering
+	\includegraphics[width=5in]{chap1/non-interactive}
+	\bicaption[fig:non-interactive framework]{图}{非交互式框架}{Fig.}{non-interactive framework}
+\end{figure}
 
-若需要生成包含“原创性声明扫描件”的学位论文文档，请将扫描件保存为statement.pdf，然后调用make生成submit.pdf。
 
-\begin{lstlisting}[basicstyle=\small\ttfamily, caption={生成用于提交的学位论文}, numbers=none]
-make clean submit.pdf
-\end{lstlisting}
 
-编译失败时，可以尝试手动逐次编译，定位故障。
+\subsection{匿名化算法}  %k匿名算法
 
-\begin{lstlisting}[basicstyle=\small\ttfamily, caption={手动逐次编译}, numbers=none]
-xelatex -no-pdf thesis
-biber --debug thesis
-xelatex thesis
-xelatex thesis
-\end{lstlisting}
-
-\subsection{模板文件布局}
-\label{sec:layout}
-
-\begin{lstlisting}[basicstyle=\small\ttfamily,caption={模板文件布局},label=layout,float,numbers=none]
-├── LICENSE
-├── Makefile
-├── README.md
-├── bib
-│   └── thesis.bib
-├── figure
-│   ├── chap2
-│   │   ├── sjtulogo.eps
-│   │   ├── sjtulogo.jpg
-│   │   ├── sjtulogo.pdf
-│   │   └── sjtulogo.png
-│   └── sjtubanner.png
-├── sjtuthesis.cfg
-├── sjtuthesis.cls
-├── statement.pdf
-├── submit.pdf
-├── tex
-│   ├── abstract.tex
-│   ├── ack.tex
-│   ├── app_cjk.tex
-│   ├── app_eq.tex
-│   ├── app_log.tex
-│   ├── chapter01.tex
-│   ├── chapter02.tex
-│   ├── chapter03.tex
-│   ├── conclusion.tex
-│   ├── id.tex
-│   ├── patents.tex
-│   ├── projects.tex
-│   ├── pub.tex
-│   └── symbol.tex
-└── thesis.tex
-\end{lstlisting}
-
-本节介绍学位论文模板中木要文件和目录的功能。
-
-\subsubsection{格式控制文件}
-\label{sec:format}
-
-格式控制文件控制着论文的表现形式，包括两个文件： sjtuthesis.cfg, sjtuthesis.cls。
-
-\subsubsection{主控文件thesis.tex}
-\label{sec:thesistex}
-
-主控文件thesis.tex的作用就是将你分散在多个文件中的内容“整合”成一篇完整的论文。
-使用这个模板撰写学位论文时，你的学位论文内容和素材会被“拆散”到各个文件中：
-譬如各章正文、各个附录、各章参考文献等等。
-在thesis.tex中通过“include”命令将论文的各个部分包含进来，从而形成一篇结构完成的论文。
-对模板定制时引入的宏包，建议放在导言区。
-
-\subsubsection{各章源文件tex}
-\label{sec:thesisbody}
-
-这一部分是论文的主体，是以“章”为单位划分的，包括：
-
-\begin{itemize}[noitemsep,topsep=0pt,parsep=0pt,partopsep=0pt]
-	\item 中英文摘要(abstract.tex)。前言(frontmatter)的其他部分，中英文封面、原创性声明、授权信息在sjtuthesis.cls中定义，不单独分离为tex文件。
-不单独弄成文件。
-	\item 正文(mainmatter)——学位论文正文的各章内容，源文件是chapter\emph{xxx}.tex。
-	\item 附录(app\emph{xx}.tex)、致谢(thuanks.tex)、攻读学位论文期间发表的学术论文目录(pub.tex)、个人简历(resume.tex)组成正文后的部分(backmatter)。
-参考文献列表由biber插入，不作为一个单独的文件。
-\end{itemize}
-
-\subsubsection{图片文件夹figure}
-\label{sec:fig}
-
-figure文件夹放置了需要插入文档中的图片文件(支持PNG/JPG/PDF/EPS格式的图片)，可以在按照章节划分子目录。
-模板文件中使用\verb|\graphicspath|命令定义了图片存储的顶层目录，在插入图片时，顶层目录名“figure”可省略。
-
-\subsubsection{参考文献数据库bib}
-\label{sec:bib}
-
-目前参考文件数据库目录只存放一个参考文件数据库thesis.bib。
-关于参考文献引用，可参考第\ref{chap:example}章中的例子。
+\subsection{决策树} %主要的数据挖掘分类算法，信息增益，C4.5，CART对于离散和连续属性的处理问题
 
