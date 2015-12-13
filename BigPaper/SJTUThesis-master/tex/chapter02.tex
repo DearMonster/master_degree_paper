@@ -48,8 +48,6 @@
 其中，$\|\cdot\|$表示$L_{1}$范数。
 \end{defn}
 
-
-
 \subsection{差分隐私实现机制}
 
 基于全局敏感性，本课题涉及两种加噪算法：拉普拉斯机制(Laplace mechanism)和指数机制(Exponential mechanism)。
@@ -62,7 +60,7 @@
 	\end{equation}
 	其中，\textit{Laplace}为标准的拉普拉斯分布，$S(\mathcal{F})/\varepsilon$决定噪音量级。
 \end{thm}
-例如，当$\mathcal{F}$为计数函数时，S($\mathcal{F}$)=1，此时$\mathcal{M}(D) = \mathcal{F}(D) + (\textit{Laplace}(1/\varepsilon)^d$。
+例如，当$\mathcal{F}$为求和函数时，S($\mathcal{F}$)=1，此时$\mathcal{M}(D) = \mathcal{F}(D) + (\textit{Laplace}(1/\varepsilon)^d$。
 
 指数机制通过设计打分函数对属性进行打分计算，分值越高就有越大的概率被选中。
 \begin{thm}
@@ -74,6 +72,19 @@
 	其中，S($\mathcal{F}$)为打分函数$\mathcal{F}$的全局敏感性，Pr(o)表示返回输出项o的概率。
 \end{thm}
 在决策树分类算法中，常用的打分有信息增益，基尼指数等。通过算法$\mathcal{M}$得到候选属性的概率值分布，之后按照概率抽取属性。
+
+噪音的扰动降低了数据集的准确性，一般用误差方差来衡量原数据集分布和加噪数据集分布偏差。
+\begin{defn}
+	\label{thm:error}
+	(\textsc{误差方差}\cite{Dwork Calibrating}) 在数据集$D$中，有查询函数$\mathcal{F}$: $D\rightarrow \mathrm{R}^d$且满足拉普拉斯机制，则查询的第i个元素的误差方差$\mathbb{E}(i)$及对整个查询Q的误差方差为
+	\begin{eqnarray}
+	&\mathbb{E}(i) = \mathbb{E}(\textit{Laplace}(S(\mathcal{F})/ \varepsilon)^2) = 2\frac{S(\mathcal{F})^2}{\varepsilon^2}\\
+	&\mathbb{E}(Q) = \sum\nolimits_{i \in Q}\mathbb{E}(i)
+	\end{eqnarray}
+	其中，\textit{Laplace}为标准的拉普拉斯分布，$S(\mathcal{F})$为全局敏感性。
+\end{defn}
+
+例如，当$\mathcal{F}$为计数函数时，对于n个元素的查询Q，$\mathbb{E}(Q)$ = n$\mathbb{E}(\textit{Laplace}(S(1)/ \varepsilon)^2)$ = 2n/$\varepsilon^2$。
 
 \section{频率矩阵及问题表述}
 
