@@ -324,7 +324,32 @@ DiffGen基于\ref{chap4_lap}式的处理以满足差分隐私定义，数据发�
 数据集发布序列为叶节点数据项集合，即$\mathcal{H}$ = \{$\widetilde{C}(x_{A})$,$\widetilde{C}(x_{B})$,$\widetilde{C}(x_{C})$,$\widetilde{C}(x_{D})$,$\widetilde{C}(x_{E})$\}。现有查询序列$\mathcal{Q}$=\{C([15-19]),C([20-29]),C([15-34]),C([15-40])\}。那么，对于单位长度查询C([15-19])，直接返回节点A的计数值$\widetilde{C}(x_{A})$即可。对于范围查询C([20-29])，由于节点B,C的最小公共祖先节点集为{B,C}，因此返回($\widetilde{C}(x_{B})$+$\widetilde{C}(x_{C})$)；对于C([15-34])，其覆盖节点A,B,C,D的最小公共祖先节点集为{H}，因此返回$\widetilde{C}(x_{H})$；对于C([15-40]，同理寻得A,B,C,D,E的最小公共祖先节点集为{I}，返回$\widetilde{C}(x_{I})$。
 \end{exmp}
 
-由于查询应答方式的改变，显然需要重定义全局敏感性。
+可见，这其实是一个树结构上的“最小集合覆盖”问题——寻找最小的能够完全覆盖给定的叶节点集合的父节点集。基于贪心思想，$DTree$树结构的最小集合覆盖算法\ref{msc}描述如下：
+\begin{algorithm}
+	\caption{基于$DTree$树结构的最小集合覆盖算法TMSC}\label{euclid}
+	\label{msc}
+	\begin{algorithmic}[1]
+		\REQUIRE $DTtree$树结构, 叶节点集合$\AA$
+		\ENSURE 最小覆盖集合$\Upsilon$
+		初始化 $\Upsilon$, $\Upsilon$ $\leftarrow$ $\O$
+		\FOR{后续遍历$DTree$中的每个叶节点$leaf$}
+		\STATE $leaf$的覆盖范围表示为$cover(leaf)$
+		\WHILE{$cover(leaf)$ $\subseteq$ \AA}
+		\STATE $leaf_copy$ $\leftarrow$ $leaf$
+		\STATE $leaf$ $\leftarrow$ $leaf$的父节点
+		\ENDWHILE 
+		\STATE $\Upsilon$ $\leftarrow$ $\Upsilon$ $\bigcup$ $leaf_copy$
+		\STATE \AA $\leftarrow$ \AA - $cover($leaf_copy$)$
+		\IF{\AA = $\O$}
+		\RETURN $\Upsilon$
+		\ENDIF
+		\ENDFOR
+	\end{algorithmic}
+\end{algorithm}
+
+算法\ref{msc}中，叶节点集合$\AA$为待覆盖集合，返回集合$\Upsilon$为最小的覆盖集合。算法第2行，后序遍历中仅对叶节点做处理。算法第3-6行，对于覆盖范围包含于集合$\AA$的每个叶节点，贪心地向上取尽可能靠近根节点的父节点。第8，9行做更新处理。第10行，当$\AA$为空，则表示$\Upsilon$中的节点集已经完全覆盖初始的$\AA$，返回即可。
+
+查询应答方式的改变引起了全局敏感性的改变，因此需要重新定义。
 
 \begin{prop}
 	\label{DTreeSensitivity}
@@ -341,7 +366,8 @@ DiffGen基于\ref{chap4_lap}式的处理以满足差分隐私定义，数据发�
 \end{equation}
 其中，$m$为发布序列\mathcal{H}的长度，即$DTree$中的叶节点个数。
 
-一般地有$DH$>1，可见此时由于全局敏感性的增加，在叶节点上添加了更大量级的拉普拉斯噪音。
+一般地有$DH$>1，可见此时由于全局敏感性的增加，在叶节点上添加了更大量级的拉普拉斯噪音。因此，算法\ref{diffcon1}的第14行改为$LapNoise$ $\leftarrow$ Laplace($DHeight$/$\varepsilon$)。
+这可能会降低单位长度查询结果的准确性，但是基于一致性树结构的应答模式会大大增加非单位长度的范围查询结果的准确度。
 %引出树的敏感性，小波和boost里边有，给出定义；研究下DiffGen的敏感性
 
 %给图说明新的应答模式
@@ -350,7 +376,53 @@ DiffGen基于\ref{chap4_lap}式的处理以满足差分隐私定义，数据发�
 
 \subsection{噪音调整算法}
 
+基于一致性约束不仅可重定义查询应答模式与全局敏感性，而且节点间的一致性等式是属性泛化关系前后的固有属性，可作为噪音数值调整的依据。
+以下设计并实现基于任意树结构的噪音调整算法DiffConOpt。它在DiffCon算法整体流程中具有两个作用：(1)在不违背差分隐私定义的同时，优化噪音分布，使得基于TMSC算法的查询应答模式得到的结果集具有更小的误差方差。(2)使得加噪后的$DTree$重获一致性特性，这是基于叶节点的数据发布方案的可行性基础。
+%说明，不恢复一致性，就无法用这个老方法
+%调整2个目的：1，优化噪音分布。2，让老方法可行
+对算法\ref{adjustnoise}做参数说明：$DTree$中的节点$x$的加噪计数表示为$\tilde{x}$，即"LapNoise"变量值；调整后的优化结果为$\vec{x}$，即"OptNoise"的变量值。树$Xtree$是以节点$x$为根节点的子树，$Xtree$的节点总数为$N_{total}(x)$，其中有$N_{leaf}(x)$个叶节点。$x$的父节点为$P(x)$，$x$的子节点集合为$Child(x)$。
+\begin{algorithm}
+	\caption{噪音调整算法DiffConOpt} 
+	\label{adjustnoise}
+	\begin{algorithmic}[1]
+		\REQUIRE $DTree$树
+		\ENSURE 重获一致性特性且噪音分布更优的$DTree$树
+		\FOR{后续遍历$DTree$中的每个节点$x$}
+		\IF{ $x$是叶节点}
+		\STATE $\vec{x}$ $\leftarrow$ $\tilde{x}$ 
+		\ELSE
+		\STATE  $\vec{x}$ $\leftarrow$ $\frac{{N_{leaf}(x) * \tilde{x} + (N_{total}(x) - N_{leaf}(x)) * \sum\nolimits_{j \in Child(x)} {\vec{j}}}}{{N_{total}(x)}}$
+		\ENDIF
+		\ENDFOR
+		\FOR{先序遍历$DTree$中的每个节点$x$}
+		\IF{ $x$是根节点}
+		\STATE  $\vec{x}$ $\leftarrow$ $\vec{x}$
+		\ELSE
+		\STATE  $ChildNum$ = ${\sum\nolimits_{j \in Child(x)} {1}}$
+		\STATE  $\vec{x}$ $\leftarrow$ $\vec{x} + \frac{{\overrightarrow{P(x)} - \sum\nolimits_{j \in Child(P(x))} {\vec{j}}}}{ChildNum}$
+		\ENDIF
+		\ENDFOR
+		\RETURN $DTree$
+	\end{algorithmic}
+\end{algorithm}
+
+通过两次遍历完成算法DiffConOpt。第一次在算法第1行，自底向上的顺序遍历$DTree$的每个节点，求其优化结果。若非叶节点，则进行第5行的调整处理，否则直接以噪音值作为优化值。第二次采用自顶向下的顺序遍历节点，算法第8行开始，对于非根节点进行第13行的调整处理，否则原值返回。最后，发布重获一致性特性且具有更优噪音分布的$DTree$树。
+
+显然，算法\ref{adjustnoise}适用于任意树结构，这对$HBoost$的完全$k$-叉树假设做了扩展。
+证明正确性。
+
 
 \subsection{流程总结}
+
+本章节对DiffCon算法的具体设计和实现进行了详细阐述，现在就算法运行流程和关键细节做分析总结。
+
+首先，基于DiffGen分类树实现的$DTree$树是算法的结构基础，它呈现了数据集基于决策树算法经匿名化处理后的一致性关系，并且维护了“LapNoise”和“OptNoise”变量，是为噪音优化算法DiffConOpt的处理框架。
+
+接下来，改变基于单位长度叶节点的查询应答模式，设计新的基于树结构最小集合覆盖算法TMSC的查询应答模式，充分利用$DTree$节点间的一致性特性，尽可能减小噪音叠加的发生。基于新的查询应答模式，显然叶节点数据项不再是独立的加噪单位，因此重定义了全局敏感性，并基于此在叶节点上添加拉普拉斯噪音。
+
+为了保护数据安全性，应该使用DiffGen算法的基于叶节点的数据发布方式，但由于加噪处理使得$DTree$不再具有一致性特性——显然父节点计数值难以等于其所有叶节点的累加。因此，需要对节点的噪音分布进行优化处理，并且合理的噪音分布能够增加发布数据的准确性。噪音优化算法DiffConOpt通过对$DTree$节点的两次遍历，基于两个调整公式，高效完成噪音分布的优化工作。
+%应该独立出来说，这个抽象过程。虽然采用的是叶节点加噪，但是！效果和所有节点加噪是一样的
+
+最后，采用DiffGen算法的发布方式——基于$DTree$的叶节点统计数据项，供范围计数查询类应用使用。
 
 \section{本章小结}

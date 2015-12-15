@@ -1,0 +1,512 @@
+﻿%%==================================================
+%% chapter05.tex for SJTU Master Thesis
+%% based on CASthesis
+%% modified by wei.jianwen@gmail.com
+%% version: 0.3a
+%% Encoding: UTF-8
+%% last update: Dec 5th, 2010
+%%==================================================
+
+%\bibliographystyle{sjtu2} %[此处用于每章都生产参考文献]
+\raggedbottom
+\chapter{实验与分析}
+\label{chap:evaluation}
+
+\section{引言}
+
+在前面的章节中我们已经介绍了智能电网的相关背景知识，明确了非法用电行为的社会层面与经济层面的危害，针对该问题完成了数学建模，并从数学建模问题的解决出发，设计实现了适应性分布式智能电网非法用电行为检测算法。前述章节中，我们详细叙述了系统的整体设计理念和集群、模块等的部署实现。我们借助Openstack Swift 和 Keystone 等开源数据分布式存储构件搭建了系统数据存储平台，基于适应性分布式智能电网非法用电行为检测算法编写实现预警模块，预警计算结果获取后，经由Echarts可视化框架实现数据的动态可视化，将可疑用户的相关电力消费数据信息提交给一线运维人员，并给其提供可视化操作调取界面，借助人脑的创造性和数据分析能力，更为精准地捕获非法用电行为。
+
+本章节将针对上述系统进行仿真模拟实验。主要工作包括：搭建实验平台；针对各模块的功能、性能等参数设计实验方案；获取实验结果后，就实验结果显示的系统的特性进行分析说明。
+
+\section{实验平台搭建}
+
+\subsection{Mosaik 分布式仿真器}
+
+Mosaik是Steffen Schütte 和Stefan Scherfke等人编写的一套面向智能电网仿真模拟的分布式框架。其主要目标是使用已有的常态上下文中的数据仿真器（用户自主实现）来实现给定智能电网场景下的动态电力交互模拟\upcite{mosaikoverview}。
+
+Mosaik本身并不强制常态数据仿真器的实现方式、编写语言、运行环境等因素（即便这些仿真器有各自单独的事件处理循环节和进程信息），Mosaik只是负责同步这些仿真器进程，并管理它们相互间的数据交互。当然，要实现这一点，需要仿真器在数据的输入和输出实现时参照Mosaik数据交换接口标准编写。Mosaik提供一整套的数据交换API给仿真器以使其能与Mosaik框架本身交互；Mosaik针对不同类型的仿真器进程（python、shell、exe等等）实现对应的处理器（handler）；Mosaik允许仿真场景的建模过程引入多种不同类型的仿真器并依据步频调度各仿真器的运行流程，管理数据交换。
+
+Mosaik主体由Python 3 实现，但其仿真API实现了完全的语言屏蔽，即仿真器本身的编写可扩展至Python 2， Java， C，matlab或者其他任何编程语言。故此Mosaik提供了一整套的自由可扩展的智能电网场景仿真模拟框架。
+
+Mosaik本身的实现较为繁杂，不过其核心模块主要包含四块：1）mosaik Sim API 仿真通用接口； 2）Scenario API 场景设置接口； 3）Simulator Manager 模拟器管理器；4）simulator 模拟器。下面将详细介绍这四个核心模块：
+
+\begin{enumerate}
+\item mosaik Sim API 仿真通用接口: Mosaik 使用通用网络通信机制套接字（Socket）和JSON编码的信息来与模拟器交互，此层交互机制称之为底层接口（low level API）。对于特定的编程语言，Mosaik 提供了相对更为专门的高层接口（high level API），实现网络相关各部件互联，并给开发者提供抽象基类，帮助其在该基类的基础上实现自己的模拟器类。图\ref{fig:mosaik-api}所示即为Sim API的数据通路。
+    
+\begin{figure}[!htp]
+ \centering
+ \includegraphics[scale=0.3]{chap5/mosaik-api}
+ \bicaption[fig:mosaik-api]{图}{Mosaik API 结构图}{Fig.}{Mosaik API structure overview}
+\end{figure}
+
+\item Scenario API 场景设置接口：该接口提供简单的API使得开发者能够使用纯Python编写自己的仿真场景（不提供图像化建模过程）。Scenario API提供启动模拟器和初始化数据模型的机制，该机制反馈数据模型实例集，通过下标等方式，开发者可获取任意实例，并将之互相关联，以构建模拟器间相互的数据流通道。一一对应和一对多的机制均被支持。下述的代码段即为场景设置实例。
+    
+\begin{lstlisting}[language={Python}, caption={场景设置实例}]   
+# Setup
+import mosaik
+
+sim\_config = {
+    'ExampleSim': {'python': 'example\_sim.mosaik:ExampleSim'},
+}
+
+world = mosaik.World(sim\_config)
+
+# Start simulators
+exsim\_0 = world.start('ExampleSim', step\_size=2)
+exsim\_1 = world.start('ExampleSim')
+
+# Instantiate models
+a\_set = [exsim\_0.A(init\_val=i) for i in range(3)]
+b\_set = exsim\_1.B.create(3, init\_val=1)
+
+# Connect entities
+for a, b in zip(a\_set, b\_set):
+    world.connect(a, b, ('val\_out', 'val\_in'))
+
+# Run simulation
+world.run(until=10)
+
+\end{lstlisting}
+
+\begin{lstlisting}[language={Python}, caption={模拟器元数据设置}]
+>>> import mosaik
+>>>
+>>> sim_config = {
+...     'SimA': {
+...         'python': 'package.module:SimClass',
+...     },
+...     'SimB': {
+...         'cmd': 'java -jar simB.jar %(addr)s',
+...         'cwd': 'simB/dist/',
+...     },
+...     'SimC': {
+...         'connect': 'localhost:5678',
+...     },
+... }
+>>>
+>>> world = mosaik.World(sim_config)
+\end{lstlisting}
+
+\item Simulator Manager 模拟器管理器；该管理器负责处理各模拟器进程实例，并实现相互间通信。其主要工作有三类：1）开启模拟器新进程；2）连接已经开始运行的模拟器进程实例；3）导入模拟器模块，并就地于当前上下文运行（in-process）。就地运行机制削减了上下文切换可能带来的内存耗费，并避免了序列化数据并通过网络来发送信息造成的响应延迟，对于智能电网模拟场景中的同步性和高效性维护，都有极大的好处。对于外部进程，也可通过并发运行来纳入管理范围。图\ref{fig:simmanager}为其主体架构。
+    
+\begin{figure}[!htp]
+ \centering
+ \includegraphics[scale=0.3]{chap5/simmanager}
+ \bicaption[fig:simmanager]{图}{Mosaik 模拟器管理器 结构图}{Fig.}{Mosaik Simulator Manager structure overview}
+\end{figure}
+
+\item simulator 模拟器：其使用Python事件分离式仿真库SimPy来实现场景的可协调仿真模拟，Mosaik引入的模拟器实例支持不同步频，在仿真过程的运行时，模拟器甚至可以更改自己的步频。其本身支持记录各模拟器间的依赖关系，并设定其只在必要时跳入下一步运行（即某些模拟器在仿真过程中可以被中止运行），当然，模拟器调度机制支持多模拟器的并发执行。图\ref{fig:example-model}为示例数据模型，后续代码为示例模拟器实现。
+    
+\begin{figure}[!htp]
+ \centering
+ \includegraphics[scale=0.3]{chap5/example-model}
+ \bicaption[fig:example-model]{图}{Mosaik 示例数据模型}{Fig.}{Mosaik example model}
+\end{figure}
+
+\begin{lstlisting}[language={Python}, caption={示例模拟器实现}]
+# simulator.py
+"""
+This module contains a simple example simulator.
+
+"""
+
+
+class Model:
+    """Simple model that increases its value *val* with some *delta* every
+    step.
+
+    You can optionally set the initial value *init_val*. It defaults to ``0``.
+
+    """
+    def \_\_init\_\_(self, init\_val=0):
+        self.val = init\_val
+        self.delta = 1
+
+    def step(self):
+        """Perform a simulation step by adding *delta* to *val*."""
+        self.val += self.delta
+
+
+class Simulator(object):
+    """Simulates a number of ``Model`` models and collects some data."""
+    def \_\_init\_\_(self):
+        self.models = []
+        self.data = []
+
+    def add\_model(self, init\_val):
+        """Create an instances of ``Model`` with *init\_val*."""
+        model = Model(init\_val)
+        self.models.append(model)
+        self.data.append([])  # Add list for simulation data
+
+    def step(self, deltas=None):
+        """Set new model inputs from *deltas* to the models and perform a
+        simulatino step.
+
+        *deltas* is a dictionary that maps model indices to new delta values
+        for the model.
+
+        """
+        if deltas:
+            # Set new deltas to model instances
+            for idx, delta in deltas.items():
+                self.models[idx].delta = delta
+
+        # Step models and collect data
+        for i, model in enumerate(self.models):
+            model.step()
+            self.data[i].append(model.val)
+
+
+if \_\_name\_\_ == '\_\_main\_\_':
+    # This is how the simulator could be used:
+    sim = Simulator()
+    for i in range(2):
+        sim.add\_model(init\_val=0)
+    sim.step()
+    sim.step(\{0: 23, 1: 42\})
+    print('Simulation finished with data:')
+    for i, inst in enumerate(sim.data):
+        print('\%d: \%s' \% (i, inst))
+
+\end{lstlisting}
+ 
+\end{enumerate}
+
+\subsection{实验环境}
+
+实验所用机器的硬件环境为：
+\begin{enumerate}
+\item 处理器：2*4core，Intel® Core™ i7 @ 3.10GHz
+\item 内存：8G
+\item 硬盘：400G
+\end{enumerate}
+
+实验所用机器的系统环境为：
+\begin{enumerate}
+\item 操作系统：Ubuntu 14.04， Linux 内核版本 3.6.0
+\item 仿真器：Mosaik 2.0
+\end{enumerate}
+
+其中Moasik 2.0的安装过程如下：
+第一步首先我们需要安装PIP和virtualenv，其中PIP负责管理所有Python软件包，virtualenv负责创建隔离的Python运行环境。运行如下代码可完成：
+
+
+\begin{lstlisting}[language={Tex}]
+wget https\://bootstrap.pypa.io/get-pip.py
+sudo python get\-pip.py
+sudo pip install \-U virtualenv
+
+\end{lstlisting}
+
+第二步为Mosaik及其依赖包创建虚拟运行环境，相关代码如下：
+
+\begin{lstlisting}[language={Python}]
+virtualenv -p /usr/bin/python3 ~/.virtualenvs/mosaik
+source ~/.virtualenvs/mosaik/bin/activate
+
+\end{lstlisting}
+
+此时命令提示符将变为“(mosaik)user\@kubuntu:~\$”。
+
+第三步安装mosaik框架：
+
+\begin{lstlisting}[language={Python}]
+pip install --pre mosaik
+
+\end{lstlisting}
+
+mosaik的实际运行还需要NumPy，SciPy和h5py，第四步即为安装这些依赖包的过程，
+
+\begin{lstlisting}[language={Python}]
+sudo apt-get install mercurial build-essential python3-dev gfortran libatlas-dev libatlas-base-dev libhdf5-dev
+source ~/.virtualenvs/mosaik/bin/activate
+pip install wheel
+pip wheel numpy
+pip install wheelhouse/numpy-1.8.2-cp34-cp34m-linux\_x86\_64.whl
+pip wheel scipy
+pip install wheelhouse/scipy-0.14.0-cp34-cp34m-linux\_x86\_64.whl
+pip wheel h5py
+pip install wheelhouse/h5py-2.3.1-cp34-cp34m-linux\_x86\_64.whl
+
+\end{lstlisting}
+
+以上完成了核心实验环境的搭建。
+
+\section{实验设计概览}
+
+本实验方案针对系统平台设计，主要从两方面展开：功能测试和性能测试。其中功能测试主要包括：验证基于Openstack Swift的分布式数据存储平台的功能与使用效果，验证面向智能电网非法用电行为检测的数据可视化平台的功能与使用效果；性能测试则包括：测试基于Openstack Swift的分布式数据存储平台在电网内住户电力数据读写时的性能表现，测试非法用电行为检测预警系统的性能表现。下面将就实验中的关键点作介绍。
+
+\section{系统平台基础功能测试}
+
+鉴于功能测试主要在于验证系统平台的基本运行情况，此处将系统的整体功能测试集中说明。主要包括基于Openstack Swift构建的分布式数据存储平台和面向智能电网的全局数据实时监控可视化平台。
+
+\subsection{数据存储平台}
+
+电网中的数据存储平台需要应对数据的写入、读取、目录查询、删除等基础功能需求。参照前文所述，Swift接入支持RESTful API，此处借助curl linux工具对存储平台进行功能测试。结果如下图\ref{fig:swiftfunctest}所示。
+
+\begin{figure}[!htp]
+  \centering
+  \subfigure[系统接入图]{
+    \label{fig:swiftfunctest:a} %% label for first subfigure
+    \includegraphics[width=0.5\textwidth]{chap5/swift-access}}
+  \hspace{1in}
+  \subfigure[数据写入图]{
+    \label{fig:swiftfunctest:b} %% label for second subfigure
+    \includegraphics[width=0.5\textwidth]{chap5/swift-write}}
+  \hspace{1in}
+  \subfigure[数据读取图]{
+    \label{fig:swiftfunctest:c} %% label for second subfigure
+    \includegraphics[width=0.5\textwidth]{chap5/swift-read}}
+  \hspace{1in}
+  \subfigure[数据删除图]{
+    \label{fig:swiftfunctest:d} %% label for second subfigure
+    \includegraphics[width=0.5\textwidth]{chap5/swift-delete}}
+  \bicaption[fig:swiftfunctest]{图}{Swift数据存储平台功能测试结果}{Fig.}{Swift data storage platform function test result}
+\end{figure}
+
+图中结果显示Swift 分布式数据存储平台的系统接入、数据读取、写入以及删除等基本功能均已实现。
+
+\subsection{数据实时监控可视化平台}
+
+本课题构建的数据实时监控可视化平台需要完成对电网全局结点拓扑的可视化、各节点代表的住户电力数据的实时可视化、预警系统检测反馈结果的可视化。此处借用chrome浏览器访问监控端口，做功能测试。结果如图\ref{fig:visual-monitor}所示。
+
+\begin{figure}[!htp]
+  \centering
+  \subfigure[拓扑可视化图]{
+    \label{fig:visual-monitor:a} %% label for first subfigure
+    \includegraphics[width=0.4\textwidth]{chap5/visual-monitor}}
+  \hspace{1in}
+  \subfigure[住户电力数据可视化图]{
+    \label{fig:visual-monitor:b} %% label for second subfigure
+    \includegraphics[width=0.4\textwidth]{chap5/visual-monitor2}}
+  \hspace{1in}
+  \subfigure[异常节点可视化图]{
+    \label{fig:visual-monitor:c} %% label for second subfigure
+    \includegraphics[width=0.4\textwidth]{chap5/visual-monitor3}}
+  \hspace{1in}
+  \subfigure[少量住户的诚信参数反馈可视化图]{
+    \label{fig:visual-monitor:d} %% label for second subfigure
+    \includegraphics[width=0.4\textwidth]{chap5/visual-monitor4}}
+  \bicaption[fig:visual-monitor]{图}{数据实时监控可视化平台功能测试结果}{Fig.}{Data visualization platform function test result}
+\end{figure}
+
+图中结果显示数据实时监控可视化平台成功实现了电网全局结点拓扑的可视化、各节点代表的住户电力数据的实时可视化、预警系统检测反馈结果的可视化。
+至此，结束基础功能测试。
+
+\section{分布式数据存储平台性能测试与分析}
+
+电网环境中数据读写有诸多特点，首先是每次读写的数据对象本身较小，通常只是用户电力数据构成的时间序列，正常情况下不会超过2M；其次数据产生源分布广泛，且几乎每时每刻均有新数据生成，数据写入频繁，并发写入频率高；电网监控时，数据获取的响应速度要求高。
+
+针对上述特点，此处面向Swift分布式数据存储平台的性能测试将专注于并发读写场景，测试在高并发情况下的系统响应速度。
+
+\subsection{实验方案}
+
+实验方案参数设计如下表\ref{tab:thirdone}所示。
+
+\begin{table}[!hpb]
+  \centering
+  \bicaption[tab:thirdone]{表}{Swift 性能测试参数}{Table}{Swift performance test parameter}
+  \begin{tabular}{|c|c|c|c|}
+  \hline
+  操作名称 & 文件大小 & Client数目 & 指标\\
+  \hline
+  PUT & 256KB & 5到2560 逐次翻倍 & 响应时间（response time）\\
+  \hline
+  GET & 256KB & 5到2560 逐次翻倍 & 响应时间（response time）\\
+  \hline
+  \end{tabular}
+\end{table}
+
+对于并发式写操作，实验方案如上表所示，撰写Python脚本，调用curl工具，向存储集群中的代理节点发送PUT HTTP请求，传递的数据文件大小为256KB，多线程并发执行该操作，并发数从5开始，逐次翻倍，10，20，40，直至2560，每轮指定并发数的次数执行10次，计算该并发数下的系统平均响应时间。
+
+对于并发式读操作，实验方案如上表所示，撰写Python脚本，调用curl工具，向存储集群中的代理节点发送GET HTTP请求，传递的数据文件大小为256KB，多线程并发执行该操作，并发数从5开始，逐次翻倍，10，20，40，直至2560，每轮指定并发数的次数执行10次，计算该并发数下的系统平均响应时间。
+
+\subsection{实验结果及分析}
+并发式读写操作实验结果图和数据表如下图\ref{fig:con-op}和表\ref{tab:fourthone}所示。
+\begin{figure}[!htp]
+  \centering
+  \subfigure[并发式读实验结果]{
+    \label{fig:con-op:a} %% label for first subfigure
+    \includegraphics[width=0.6\textwidth]{chap5/con-read}}
+  \hspace{1in}
+  \subfigure[并发式写实验结果]{
+    \label{fig:con-op:b} %% label for second subfigure
+    \includegraphics[width=0.6\textwidth]{chap5/con-write}}
+  \bicaption[fig:con-op]{图}{并发读写测试结果}{Fig.}{Concurrent READ and WRITE test result}
+\end{figure}
+
+\begin{table}[!hpb]
+  \centering
+  \bicaption[tab:fourthone]{表}{并发读写实验数据}{Table}{Concurrent READ and WRITE experiment data}
+  \begin{tabular}{|c|c|c|}
+  \hline
+  并发数 & GET 平均响应时间（ms） & PUT 平均响应时间（ms）\\
+  \hline
+  5 & 20.00 & 40.00\\
+  \hline
+  10 & 20.00 & 40.00\\
+  \hline
+  20 & 20.00 & 50.00\\
+  \hline
+  40 & 30.00 & 70.00\\
+  \hline
+  80 & 46.67 & 100.00\\
+  \hline
+  160 & 56.67 & 143.33\\
+  \hline
+  320 & 106.67 & 370.00\\
+  \hline
+  640 & 230.00 & 1223.33\\
+  \hline
+  1280 & 470.00 & 1690.00\\
+  \hline
+  2560 & 923.33 & 3160.00\\
+  \hline
+  \end{tabular}
+\end{table}
+
+从上述图表数据结果不难看出，无论是并发式写入还是并发式读取，Swift集群随并发数增大，平均响应时间也在不断增大，也即是说性能下降。对于并发式读取，5到100并发数内，平均响应时间增长缓慢，但当并发数大于400后，整体响应时间急剧增大，并发数为2560时，平均响应时间约为1秒；对于并发式写入，情况基本相同，并发数达到2560时，平均响应时间约为3秒。
+
+分析上述实验结果，从系统整体运行来看，用户数据的采样最小时间间隔为1分钟，在此处存储集群呈现的最大延迟不超过10秒，从应用的时间数量级上来作比较，Swift的性能表现还是卓越的。
+
+当然，并发性能依然是Swift本身实现的缺陷之一，Swift数据存储的载体为各服务器上本地文件系统，一般为XFS，最终存储地为各主机硬盘。并发式读写最终反映到各硬盘上为磁头的随机读写，性能下降就在所难免了。这也为后续优化改进预留了工作空间。
+
+\section{非法用电行为预警平台性能测试与分析}
+
+非法用电行为预警平台的意义在于实时监控电网全局网络，运行适应性分布式智能电网非法用电行为检测算法，对于各住户的电力数据，以小区为单位输入核心计算模块中，完成各小区的诚信参数计算，在诚信参数异常的小区中再以住户为单位，将其后续采样的电力数据输入核心计算模块中，计算小区内各用户的诚信参数，将诚信异常的用户信息以警告的方式发送给一线运维人员，为其进一步的细化数据分析提供目标导向。
+
+针对上述性质分析，此处对于非法用电行为预警平台性能测试的关注点为其在可疑小区和可疑用户检测时的响应速度和精确度。
+
+\subsection{智能电网数据模拟}
+
+智能电网数据模拟包括：单一住户的电力数据仿真、电网拓扑结构连接以及非法用电行为仿真。
+
+单一住户的电力数据仿真需要模拟实现智能电网中的各住户的电力数据时间序列，并仿真非法用电行为。此处我们定义住户电力数据模型如下代码所示：
+
+\begin{lstlisting}[language={Python}, caption={住户电力数据模型Mosaik实现}]
+class MeterModel:
+
+    def __init__(self, init_val=0, hon_coefficient=1,database=[]):
+        self.meterval = init_val
+        self.k = hon_coefficient
+        self.realval　= self.meterval * self.k
+        self.index = 1
+        self.database = database
+
+    def step(self):
+        """Perform a simulation step by adding *delta* to *val*."""
+        self.meterval = self.database[self.index]
+        self.index = (self.index+1)%24*60
+
+\end{lstlisting}
+
+单一住户的电力数据包含三个主要属性：meterval、k 和 realval，分别代表智能电表示数、诚信参数和住户电力实际消费值。其中示数的最小单位区间为每分钟，即meterval，电力实际消费值则等于meterval和诚信参数k的乘积。
+
+meterval的实际数据源为database数组，该数据取自University of Massachusetts Amherst的Smart*项目\upcite{umasssmart}，该项目研究探索智能家居的可持续发展特性，其采样收集了400户家庭一天当中精确到每一分钟的用电量，并将该电力数据集开放下载。模拟电网任意住户的电力数据时，在各电力数据模型初始化时，随机从400户家庭中取出数据，初始化database。
+
+电网拓扑结构模拟，此处定义基础小区，由十户家庭和一座变电站组成，如图\ref{fig:tuopu}所示。在此基础上，多个基础小区互相连接，构成更为复杂的电网拓扑结构。
+
+\begin{figure}[!htp]
+ \centering
+ \includegraphics[scale=0.4]{chap5/tuopu}
+ \bicaption[fig:tuopu]{图}{基础小区结构}{Fig.}{Basic district structure}
+\end{figure}
+
+非法用电行为模拟，此处涉及非法用电行为的表征分类，参照前文所述的非法用电行为数据模型，总的来说，其包含两类非法用电行为：用户篡改自己住房外附属的智能电表以及用户窃取其他用户的电力。故而此处只要控制更改该住户电力数据模型中诚信参数值k即可。
+
+\subsection{实验方案}
+
+基于上述智能电网数据模拟方法，构造多个场景，就预警系统的检测响应时间和准确度进行测试。对于检测响应时间，以10户家庭组成1个小区为基本单位，假设各小区内住户进行非法用电的概率恒定，逐步增大小区数目，记录检测出全部可疑小区所耗费的时间。对于检测准确度，同样以10户家庭组成1个小区为基本单位，逐步增大小区数目和特定小区内非法用电用户的比例，将模拟开始时确定的非法用电用户和检测后检测出的非法用电用户进行逐一比对，计算非法用电住户级检测的精确度，同时计算非法用电小区级检测的准确度。相关场景参数如下所示。
+
+\begin{table}[!hpb]
+  \centering
+  \bicaption[tab:thirdone]{表}{检测响应时间测试场景参数}{Table}{Detection response time test scenario configuration parameter}
+  \begin{tabular}{|c|c|c|c|}
+  \hline
+  小区数目 & 非法用电概率 & 小区内非法用电住户实际比例 & 指标\\
+  \hline
+  10增长至1000 & 0.3 & 10\% & 响应时间（response time）\\
+  \hline
+  \end{tabular}
+\end{table}
+
+\begin{table}[!hpb]
+  \centering
+  \bicaption[tab:thirdone]{表}{检测精确度测试场景参数}{Table}{Detection accuracy test scenario configuration parameter}
+  \begin{tabular}{|c|c|c|c|}
+  \hline
+  小区数目 & 非法用电概率 & 小区内非法用电住户实际比例 & 指标\\
+  \hline
+  10增长至1000 & 0.3 & 10\% 增长至30\% & 精确度（accuracy ratio）\\
+  \hline
+  \end{tabular}
+\end{table}
+
+\subsection{实验结果及分析}
+
+预警系统检测响应时间实验结果图和数据表如下图\ref{fig:detime}和表\ref{tab:fifthone}所示。
+\begin{figure}[!htp]
+  \centering
+    \includegraphics[scale=0.7]{chap5/detime}
+  \bicaption[fig:detime]{图}{预警系统检测响应时间测试结果}{Fig.}{Detection response time test result}
+\end{figure}
+
+\begin{table}[!hpb]
+  \centering
+  \bicaption[tab:fifthone]{表}{预警系统检测响应时间实验数据}{Table}{Detection response time experiment data}
+  \begin{tabular}{|c|c|}
+  \hline
+  电网内小区数目 & 响应时间（hour）\\
+  \hline
+  10 & 0.5\\
+  \hline
+  20 & 1.0\\
+  \hline
+  40 & 1.2\\
+  \hline
+  80 & 1.8\\
+  \hline
+  160 & 3.5\\
+  \hline
+  320 & 4.2\\
+  \hline
+  640 & 6.0\\
+  \hline
+  1280 & 10.0\\
+  \hline
+  \end{tabular}
+\end{table}
+
+从上述图表数据结果不难看出，随电网拓扑中的小区数目的上升，检测的响应时间不断增长。当小区数初始为10时，检测反馈结果只需0.5hour，当增至160个小区时，检测反馈结果就需要3.5个小时才能获取了。这一点从算法的运行效率角度分析不难得出，检测算法虽然以小区为单位输入，简化了网络拓扑，但随小区数目上升，其采样的节点数目和周期数目都在增长，且各节点间的数据交互还需要耗费相当的时间，算法运行结束的标志在于获取了全部小区的诚信参数值，这就需要所有的数据在计算完毕后传送到中心计算节点。故此有长达数小时的延迟就不奇怪了，相对于其他解决方案长达数月的分析周期，本预警平台的效率还是相当高的。当然上述测试数据是在软件模拟的情况下实现的，实际应用场景中，智能电表间的通信环境更为苛刻，相应的检测响应时间也会延长。
+
+
+预警系统检测准确度实验结果图和数据表如下图\ref{fig:accratio}所示。
+
+\begin{figure}[!htp]
+  \centering
+  \subfigure[小区级实验结果]{
+    \label{fig:accratio:a} %% label for first subfigure
+    \includegraphics[width=0.6\textwidth]{chap5/accratio}}
+  \hspace{1in}
+  \subfigure[住户级实验结果]{
+    \label{fig:accratio:b} %% label for second subfigure
+    \includegraphics[width=0.6\textwidth]{chap5/accratio2}}
+  \bicaption[fig:accratio]{图}{预警系统检测准确度测试结果}{Fig.}{Detection accuracy ratio test result}
+\end{figure}
+
+从上述图表数据结果不难看出，随小区数目增大，预警系统的检测精度呈现下降趋势，且小区级的检测精度较诸住户级的检测精度要高，从算法运行过程分析，随小区数目增大，需要计算遍历的矩阵数目越多，检测算法愈发不稳定，折线图中的精度震荡现象也说明了这一点。同时，小区中非法用电住户的比例对于算法的检测精度影响不大。本系统首先检测的是小区级别的非法用电行为，而测试结果显示，这一级别系统检测精度虽然也在震荡下降，不过在相当小区数目下，其精度仍有70\%以上，相比其他机器学习等方案，性能可以说是优秀的。算法检测运行的不稳定性是我们后续研究工作的改进点。
+
+\section{本章小结}
+
+在本章中我们就上章中部署实现的智能电网非法用电行为可视化监控检测平台进行实验分析。
+
+实验的仿真模拟环境是基于Mosaik智能电网电力数据仿真框架搭建的，Mosaik是Steffen Schütte 和Stefan Scherfke等人编写的一套面向智能电网仿真模拟的分布式框架。其主要目标是使用已有的常态上下文中的数据仿真器（用户自主实现）来实现给定智能电网场景下的动态电力交互模拟。实验运行的基础操作系统为Ubuntu14.04. 仿真数据取自University of Massachusetts Amherst的Smart*项目，该项目研究探索智能家居的可持续发展特性，其采样收集了400户家庭一天当中精确到每一分钟的用电量，并将该电力数据集开放下载。
+
+实验主要从两方面展开：功能测试和性能测试。其中功能测试主要包括：验证基于Openstack Swift的分布式数据存储平台的功能与使用效果，验证面向智能电网非法用电行为检测的数据可视化平台的功能与使用效果；性能测试则包括：测试基于Openstack Swift的分布式数据存储平台在电网内住户电力数据读写时的性能表现，测试非法用电行为检测预警系统的性能表现。
+
+针对Swift分布式数据存储平台的性能测试数据结果分析发现，无论是并发式写入还是并发式读取，Swift集群随并发数增大，平均响应时间也在不断增大，也即是说性能下降。对于并发式读取，5到100并发数内，平均响应时间增长缓慢，但当并发数大于400后，整体响应时间急剧增大，并发数为2560时，平均响应时间约为1秒；对于并发式写入，情况基本相同，并发数达到2560时，平均响应时间约为3秒。从系统整体运行来看，用户数据的采样最小时间间隔为1分钟，在此处存储集群呈现的最大延迟不超过10秒，从应用的时间数量级上来作比较，Swift的性能表现还是卓越的。
+
+针对非法用电行为检测预警系统的性能测试数据结果分析发现，随电网拓扑中的小区数目的上升，检测的响应时间不断增长。当小区数初始为10时，检测反馈结果只需0.5hour，当增至160个小区时，检测反馈结果就需要3.5个小时才能获取了。这一点从算法的运行效率角度分析不难得出，检测算法虽然以小区为单位输入，简化了网络拓扑，但随小区数目上升，其采样的节点数目和周期数目都在增长，且各节点间的数据交互还需要耗费相当的时间，算法运行结束的标志在于获取了全部小区的诚信参数值，这就需要所有的数据在计算完毕后传送到中心计算节点。故此有长达数小时的延迟就不奇怪了，相对于其他解决方案长达数月的分析周期，本预警平台的效率还是相当高的；随小区数目增大，预警系统的检测精度呈现下降趋势，且小区级的检测精度较诸住户级的检测精度要高，从算法运行过程分析，随小区数目增大，需要计算遍历的矩阵数目越多，检测算法愈发不稳定，折线图中的精度震荡现象也说明了这一点。同时，小区中非法用电住户的比例对于算法的检测精度影响不大。本系统首先检测的是小区级别的非法用电行为，而测试结果显示，这一级别系统检测精度虽然也在震荡下降，不过在相当小区数目下，其精度仍有70\%以上，相比其他机器学习等方案，性能可以说是优秀的。
+
+下一章将就全文内容进行总结，并分析系统的创新点。
