@@ -16,115 +16,26 @@
 
 前文总结了课题相关的基础算法和优化思路之间的联系和启发，探讨了范围查询需求和算法的数据组织形式之间的关联点，本章节以优化频率矩阵加噪模型、提升发布数据可用性为目的，论述解决方案——非交互式差分隐私匿名优化算法DiffCon的设计和实现。
 
-本章节将从基础算法出发，从基于一致性约束的噪音调整、重定义加噪方式以及优化算法的组合应答模式这几个方面介绍DiffCon算法，并就其关键技术、难点等作分析。
+本章结构安排：首先由基础算法DiffGen的相关特性入手，推导证明DiffGen具有一维直方图特性的理论基础；然后介绍具体的设计实现细节，从设计新的应答查询模式、重定义全局敏感性以及基于一致性约束的噪音调整算法这三个方面介绍DiffCon算法，并就其关键技术、难点等作分析；最后进行算法总结、性能的理论分析。
 
-\section{基础算法概览}
+\section{理论基础}
 
-面向分类应用的非交互式差分隐私匿名算法DiffGen主要的流程为：(1)为每个属性定义匿名树结构，得到匿名树森林，并定义树高。(2)基于决策树算法构建分类树并逐层划分数据集。(3)由叶节点的类属性计数生成发布数据集。流程伪代码\ref{totalprocedure}概括如下：
-
-\begin{algorithm}
-	\caption{DiffGen算法流程} 
-	\label{totalprocedure}
-	\begin{algorithmic}[1]
-		\REQUIRE 隐私代价$\varepsilon$,树高$Hight$,数据集,匿名树森林。
-		\ENSURE 发布数据集。
-		\STATE 定义合理数据结构处理数据集和匿名树森林，并建立相应联系
-		\STATE 初始化分类树根节点,记当前树高为$h$
-		\WHILE{$h++$ < $Hight$} 
-		\STATE 基于决策树算法，逐层选择属性、分裂当前节点并划分父节点数据集，构建分类树。
-		\ENDWHILE
-		\STATE 在分类树叶子节点的类属性计数上添加拉普拉斯噪音，全局敏感性为1。
-		\STATE 遍历叶节点，根据类属性计数值生成匿名化数据集
-		\RETURN 发布数据集
-	\end{algorithmic}
-\end{algorithm}
-
-\subsection{匿名树的维护}
-
-匿名规则需要数据发布者自己定义，算法读取语义文件并构建匿名树。属性分为连续属性(Numerical attribute)和离散属性(Categorical attribute)两类，如年龄、身高属于连续属性，国籍、肤色属于离散属性。选取真实数据集adult\cite{adult}中的离散属性relationship和连续属性age作为示例，如图\ref{fig4:attribute}。图\ref{fig4:semantic}是对应的自定义匿名结构语义，通过“\{”和“\}"分层。
-
-\begin{figure}[!htp]
-	\centering
-	\includegraphics[width=5.5in]{chap4/attribute}
-	\bicaption[fig4:attribute]{图}{连续和离散属性及其属性值}{Fig.}{numerical/categorical attribute and attribute value}
-\end{figure}
-
-
-\begin{figure}[!htp]
-	\centering
-	\includegraphics[width=5.5in]{chap4/semantic}
-	\bicaption[fig4:semantic]{图}{属性的自定义匿名化结构语义}{Fig.}{The user-defined semantics of anonymous structure for attribute}
-\end{figure}
-
-DiffGen读取并解析匿名结构语义后，构建如图\ref{fig4:relationship}、图\ref{fig4:age}的匿名树，作为属性切割、数据集划分的依据。匿名树的叶节点用气泡框标识，也是最“细”的发布属性值。
-
-\begin{figure}[!htp]
-	\centering
-	\includegraphics[width=5in]{chap4/relationship}
-	\bicaption[fig4:relationship]{图}{根据属性relationship的匿名语义构建的匿名树}{Fig.}{A taxonomy tree for attribute relationship that is built by anonymous semantics}
-\end{figure}
-
-\begin{figure}[!htp]
-	\centering
-	\includegraphics[width=3.5in]{chap4/age}
-	\bicaption[fig4:age]{图}{根据属性age的匿名语义构建的匿名树}{Fig.}{A taxonomy tree for attribute age that is built by anonymous semantics}
-\end{figure}
-
-\subsection{算法框架}
-
-在这个阶段，DiffGen算法依据匿名树的分裂规则，采用决策树算法通过指数机制逐层选择分裂属性，并作数据集划分，构建完整的分类树，最后在叶节点加噪并发布数据集。为了更清楚地展示这个过程以及理解DiffGen算法伪代码，继续使用前文公司应聘的例子做说明。
-\begin{exmp}
-	\label{chap4_exmp}
-	某公司有8位应聘者，对属性“国籍”、“年龄”以及是否被成功录用做统计，类属性值的“是”、“否”表示为是否被录用。
-\end{exmp}
-
-图\ref{fig4:diffgen}展示了示例\ref{chap4_exmp}背景下的算法工作过程。算法\ref{diffgen}对DiffGen算法进行了完整描述，其中$Cut_{i}$表示在当分类树树高为i时，所有匿名树中可分裂的属性集合。如，仅有根节点时，$Cut_{1}$=\{亚洲，[15-40)\}；而选取分裂属性亚洲后，$Cut_{2}$=\{东亚，西亚，[15-40)\}。$u(D,\cdotp)$表示打分函数，$S(u)$为其全局敏感性。
-
-
-\begin{algorithm}
-	\caption{DiffGen算法} 
-	\label{diffgen_backup}
-	\begin{algorithmic}[1]
-		\REQUIRE 隐私代价$\varepsilon$,树高$Hight$,数据集$D$。
-		\ENSURE 新的匿名数据集$\hat{D}$。
-		\STATE 初始化分类树根节点和$Cut_{i}$集合，此时i=1
-		\STATE 按树高切割$\varepsilon$，统计连续属性个数为$A_{Pr}^{n}$，$\varepsilon$' $\leftarrow$ $\frac{\varepsilon}{2(|A_{Pr}^{n}|+2Hight)}$
-		\STATE 对$Cut_{i}$里的每个连续属性$v_{n}$，计算其分裂点$p$，分裂点$p$的选中概率 $\wasypropto$ exp($\frac{\varepsilon\textasciiacute}{2S(u)}$$u(D,v_{n})$)
-		\STATE 对所有的属性$v$, $\forall$$v$ $\in$ $Cut_{i}$，计算分值
-		\FOR{i = 1 to $Hight$}
-		\STATE 按分值选择属性$v$，$v$$\in$ $Cut_{i}$，且$v$的选中概率$\wasypropto$ exp($\frac{\varepsilon\textasciiacute}{2S(u)}$$u(D,v)$)
-		\STATE 根据$v$的匿名树分裂节点$v$，$v$$\rightarrow$$child(v)$
-		\STATE $Cut_{i}$ $\leftarrow$ $Cut_{i}$$ - $$v$，$Cut_{i}$ $\leftarrow$ $Cut_{i}$ $\cup$ $child(v)$
-		\STATE 对$Cut_{i}$里的新出现的连续属性$v_{n}$，计算其分裂点$p$，分裂点$p$的选中概率 $\wasypropto$ exp($\frac{\varepsilon\textasciiacute}{2S(u)}$$u(D,v_{n})$)
-		\STATE 对所有的属性$v$, $\forall$$v$ $\in$ $Cut_{i}$，更新分值
-		\ENDFOR
-		\RETURN 在叶子节点的数据项上，每个类属性计数为$C$，返回($C$+$\textit{Laplace}$(1/$\varepsilon$))
-	\end{algorithmic}
-\end{algorithm}
-
-在算法\ref{diffgen}中，选取分裂属性和处理连续属性分裂点时需要消耗隐私预算，因此在第2行对隐私预算进行了切分。在5-10行的每次迭代中，需要先对待选择属性集$Cut_{i}$的每个属性计算分值并对连续属性处理进行处理，然后通过指数机制按概率挑选属性。在第8行进行更新$Cut_{i}$集合操作，第9,10行更新分值。第12行在每个叶节点类属性计数上添加独立的拉普拉斯噪音，并返回。最后，在数据集发布阶段，根据类计数分布逐条发布匿名化数据集，如图\ref{fig4:diffgen}的下半部分所示。
-
-\begin{figure}[!htp]
-	\centering
-	\includegraphics[width=6.2in]{chap4/diffgen}
-	\bicaption[fig4:diffgen]{图}{DiffGen算法流程示例}{Fig.}{A sample for the procedure of DiffGen}
-\end{figure}
-
-
-\section{算法特性及理论基础}
-
-基于前文对DiffGen算法的研究分析，本小节先总结了DiffGen数据发布模型所具有的相关性质，然后推出其具有的一维直方图特性，并给出相关证明。此特性是DiffCon基于一致性约束优化方案的理论基础，确保了算法的正确性。
+DiffGen算法是本课题的基础算法，优化设计的参照体。基于前文对DiffGen算法的论述，本小节先总结了其数据发布模型所具有的相关性质，然后推出DiffGen模型具有一维直方图特性的结论，并给出严禁证明。一维直方图特性是优化算法DiffCon的理论基础，确保了算法的正确性。
 
 \subsection{DiffGen框架的相关特性}
+
+每个叶节点上的数据项在DiffGen分类树上是唯一出现的，可通过简单的反证法证明。
 \subsubsection{唯一性}
 \begin{prop}
 	\label{chap4_prop1}
-	(DiffGen框架的唯一性)DiffGen分类树中，每个叶节点的属性值分布具有唯一性。
+	(DiffGen框架的唯一性)DiffGen分类树中，叶节点的属性值分布具有唯一性，即在所有叶节点上，不存在相同的两个数据项。
 \end{prop}
 \begin{proof}
-	同\label{prop1}证明。
+	假设命题\ref{chap4_prop1}为假，即在DiffGen分类树中，存在两个相同属性值分布的叶节点，也就是对于某一属性值集合为\{a,b,c\}的叶节点A，存在另一属性值集合为\{a,b,c\}的叶节点B，且A，B不为同一节点。
+	
+	根据分类树，寻找A，B的最小公共祖先节点C，得到节点C的分裂属性Ca及Ca的匿名树。由于A与B相交，显然Ca的匿名树在Ca上的划分产生了两个一样的属性值x，x$\in$\{a,b,c\}。具有重复属性值x的结论与匿名树的定义矛盾。因此，命题\ref{chap4_prop1}为真。
 \end{proof}
-此特性决定了针对某一属性范围的节点组合是非冗余的，保证了组合结果的唯一性。否则，冗余的查询结果会使得查询请求返回失败。
+此特性决定了针对某一属性范围的节点组合是非冗余的，保证了组合结果的唯一合法性。否则，查询结果会存在二义性问题，使得查询请求返回失败。
 
 \subsubsection{完整性}
 
@@ -146,9 +57,7 @@ DiffGen读取并解析匿名结构语义后，构建如图\ref{fig4:relationship
 	\begin{equation}
 	\text{对于}\forall a_{i} \in Q, i \in [1,k], \text{总有}a_{i} \in T_{total}
 	\end{equation}
-	
 \end{defn}
-
 
 \begin{prop}
 	\label{chap4_prop3}
@@ -159,7 +68,7 @@ DiffGen读取并解析匿名结构语义后，构建如图\ref{fig4:relationship
 	因此，对于合法查询请求中的任一属性值，在DiffGen分类树上总存在可覆盖此属性值的节点，保障所有查询项的完整性。
 \end{proof}
 
-DiffGen框架的健壮性，保障了对于任意的待查询项，在DiffGen分类树中总能找到完整覆盖其属性值的应答节点，达到对于合法查询有求必应的效果。
+DiffGen框架的健壮性，保障了对于任意的待查询项，在DiffGen分类树中总能找到完整覆盖其属性值的应答节点，达到对于合法查询有求必应的效果，是证明DiffGen框架具有一维直方图特性的关键性质。
 
 \subsubsection{一致性}
 
@@ -173,51 +82,13 @@ DiffGen框架的健壮性，保障了对于任意的待查询项，在DiffGen分
 
 基于分类树结构，健壮性和一致性特性使得对于任一查询项总能找到应答节点或节点集，保证了组合树节点作为应答返回方案的可行性。可替换原有的叶节点叠加应答模式，利用$BoostH$的一致性约束方案提升发布数据的准确度，利用节点属性间的泛化关系设计新的应答模式。
 
-\subsection{差分隐私的组合性质}
+%基于差分隐私的组合性质，在论文\cite{DiffGen}中证明了DiffGen满足$\varepsilon$-差分隐私，并且叶节点数据项之间是相互独立的。
 
-基于文献\cite{composition}，差分隐私具有如下组合性质。
-
-\begin{lem}
-	垂直组合性质(Sequential composition)\cite{composition}随机算法$A_{i}$满足$\varepsilon_{i}$-差分隐私，则一系列算法$A_{i}$在数据集$D$上的序列组合满足$\sum\limits_i \varepsilon_{i}$-差分隐私。
-\end{lem}
-
-\begin{lem}
-	\label{parallel}
-	水平组合性质(Parallel composition)\cite{composition}随机算法$A$满足$\varepsilon$-差分隐私，数据集$D$被划分为一系列不相交的子集$D_{i}$，则算法$A$在每个数据集$D_{i}$上的操作$A(D_{i})$均满足$\varepsilon$-差分隐私。
-\end{lem}
-
-
-基于差分隐私的组合性质，在论文\cite{DiffGen}中证明了DiffGen满足$\varepsilon$-差分隐私，并且叶节点数据项之间是相互独立的。
-
-\subsection{一维直方图特性总结} %正确性讨论，花了这么大力气一堆命题，就是为了说明可利用boost的思路
+\subsection{一维直方图特性} %正确性讨论，花了这么大力气一堆命题，就是为了说明可利用boost的思路
 
 %最好能搞成命题啊1，范围覆盖，2相互独立（基于差分隐私组合性质）
 
-
-
-
-
-很显然，每个叶节点所代表的集合是两两不相交的，例如除了节点4以外必然不存在属性值集合为\{东亚，[15-25]\}的叶节点。可通过简单的反证法证明。
-\begin{prop}
-	\label{prop1}
-	DiffGen分类树中，每个叶节点的属性值构成的集合是两两不相交的。	
-\end{prop}
-
-\begin{proof}
-	假设命题\ref{prop1}为假，即在DiffGen分类树中，存在两个相交的叶节点，也就是对于某一属性值集合为\{a,b,c\}的叶节点A，存在另一属性值集合为\{a,b,c\}的叶节点B，且A，B不为同一节点。
-	
-	根据分类树，寻找A，B的最小公共祖先节点C，得到节点C的分裂属性Ca及Ca的匿名树。由于A与B相交，显然Ca的匿名树在Ca上的划分产生了两个一样的属性值x，x$\in$\{a,b,c\}。具有重复属性值x的结论与匿名树的定义矛盾。因此，命题\ref{prop1}为真。
-\end{proof}
-
-
-
-
-
-
-
-
-
-一维直方图发布模型的特点在于能够响应所有的合法查询请求，对于属性值的范围查询能够通过一系列柱状条的叠加得到，并且单个柱状条计数值的增减改变是不影响其他柱状条的。而在多属性直方图中，随着属性值的增加使得数据集的数据域尺寸变大，柱状条的叠加难以满足所有的合法查询请求，健壮性得不到保障；并且，由于多属性的影响，每个柱状条之间不再相互独立，全局敏感性不为1。
+一维直方图发布模型的特点在于能够响应所有的合法查询请求，对于属性值的范围查询能够通过一系列柱状条的叠加得到，并且单个柱状条计数值的增减改变是不影响其他柱状条的。而在多属性直方图中，随着属性值的增加使得数据集的数据域尺寸变大，柱状条的叠加难以满足所有的合法查询请求，健壮性得不到保障；并且，由于多属性的影响，在属性值的范围查询中每个柱状条之间相互影响，全局敏感性不为1。
 
 \begin{prop}
 	\label{chap4_prop4}
@@ -225,27 +96,30 @@ DiffGen框架的健壮性，保障了对于任意的待查询项，在DiffGen分
 \end{prop}
 \begin{proof}
 	首先，在应答返回结果上，DiffGen框架具有绝对健壮性和一致性。可通过有限次数的单位数据项组合给合法查询做出应答，使得DiffGen发布的数据项在X轴属性组合上满足一维属性特性。因此，虽然节点中的数据项包含多个属性，但不存在多属性直方图健壮性缺失的问题。%它确保了可通过组合发布的叶节点数据项来应答所有的合法查询请求，
-	其次，DiffGen分类树的构造过程满足差分隐私的水平组合特性\ref{parallel}。由于DiffGen分类树从根节点到叶节点路径构成的数据集两两之间不相交，因此需按树高对隐私预算进行切分，这决定了在应答查询请求时，各叶节点内的数据属性分布在组合处理时是相互独立的，不因多属性分布的影响产生关联，每个叶节点代表单位长度数据项。
+	其次，DiffGen分类树的构造过程满足差分隐私的水平组合特性\ref{parallel}。由于DiffGen分类树从根节点到叶节点路径构成的数据集两两之间不相交，因此需按树高对隐私预算进行切分，这决定了在应答查询请求时，各叶节点内的数据属性分布在组合处理时是相互独立的(论文\cite{DiffGen}已证明)，不因多属性分布的影响产生关联，每个叶节点代表单位长度数据项。
 	最后，从多维的类属性分布的Y轴上看，DiffGen模型是多个一维类属性直方图的组合，多个类属性不影响一维直方图特性。如例\ref{chap3_exmp}中，可拆分成“已被录用”和“未被录用”两个类属性的一维直方图。
 \end{proof}
 
-
-基于本节的唯一性、完整性、健壮性、一致性和差分隐私组合特性的讨论，最终引出DiffGen模型本质上具有一维直方图特性的结论，说明了借鉴$BoostH$的基于一致性约束的优化方案思路的可行性。基于相同的一维直方图问题模型和单位数据项独立的理论基础，确保了DiffCon优化算法中一致性约束设计的正确性。
+基于本节的唯一性、完整性、健壮性、一致性和差分隐私组合特性的讨论，最终引出DiffGen模型本质上具有一维直方图特性的结论，说明了借鉴$BoostH$的基于一致性约束的优化思路是可行的。
+对于范围计数查询需求，与$BoostH$相同的一维直方图模型特性和一致性约束的理论基础，确保了DiffCon优化算法的正确性。
 
 
 \section{基于一致性约束的优化算法DiffCon}
 
-针对范围计数查询应用，基于上节的理论论述，本节就一致性约束的优化思路，对非交互式差分隐私优化算法DiffCon的总体设计思进行详细阐述。主要分为以下几个部分：
+%从设计新的应答查询模式、重定义全局敏感性以及基于一致性约束的噪音调整算法
+
+针对范围计数查询应用，基于上节的理论证明，本节就一致性约束的优化思路，对非交互式差分隐私优化算法DiffCon的整体设计进行详细阐述。主要分为以下几个部分：
 \begin{enumerate}
-	\item 立足于DiffGen的分类树结构，它是对原始数据集进行重匿名划分、生成新数据集的重要途径，是实施新的加噪方式的底层结构，是对外应答处理的算法基础。
-	\item 改变基于单位长度数据项的独立加噪和线性叠加应答方式，基于组合应答模式重定义全局敏感性。
-	\item 设计并实现基于任意树结构的噪音调整算法，通过一致性约束优化噪音分布，使之更加合理。
-	\item 在基于单位数据项的数据集发布方式对合法查询请求进行应答的场景中，深入分析DiffCon所采用的组合应答模式的原理——利用分类树结构与一致性特性返回较优结果。
+	\item 立足于DiffGen的分类树结构，构建辅助树结构$DTree$。它是对原数据集进行重匿名、划分，对噪音分布进行优化调整以及定义新的应答查询模式的基础。
+	\item 基于树结构的最小顶点覆盖集算法$TMSC$，设计新的应答查询模式，并重定义全局敏感性。
+	\item 实现基于任意树结构的噪音调整算法$DiffConOpt$，作为初步加噪操作后的后置处理算法。
+	%\item 在基于单位数据项的数据集发布方式对合法查询请求进行应答的场景中，深入分析DiffCon所采用的组合应答模式的原理——利用分类树结构与一致性特性返回较优结果。
 \end{enumerate}
+
 
 \subsection{辅助树结构}
 
-DiffGen分类树是本课题优化算法的基础结构，噪音分布、优化技术以及查询应答原理均基于此。因此，以DiffGen的匿名树设计和分类树构建算法\ref{diffgen}为基础，DiffCon在生成分类树的同时维护辅助树形结构$DTree$。它可以看成是加噪、发布处理前分类树，但是额外维护了$LapNoise$和$OptNoise$两个变量，分别表示初始时的拉普拉斯噪音量和调整优化后的噪音量。定义$DTree$结构的伪代码如下，展示了其中的主要变量：
+DiffGen分类树包含了各属性属性值间的匿名泛化关系及节点间的一致性联系，噪音分布、优化技术以及应答查询原理均基于此。因此，以DiffGen的匿名树设计和分类树构建算法为基础，DiffCon维护辅助树结构$DTree$。它可以看成是加噪、发布处理前完整的DiffGen分类树，但是额外维护了$LapNoise$和$OptNoise$两个变量，分别表示初始时的拉普拉斯噪音量和调整优化后的噪音量。定义$DTree$结构的C++风格代码如下，展示了其中的主要变量：
 
 \begin{lstlisting}[language={C++}, caption={DTree结构伪代码}]
 struct DTree{
@@ -255,19 +129,19 @@ struct DTree{
 	vector<DTree*> children;
 }
 \end{lstlisting}
-其中，"AttributePartition"为属性类型，$Cut_{i}$的意义与\ref{diffgen}算法中的一致，为所有匿名树中可分裂的属性集合。$DTree$结构对$Cut_{i}$的维护是为了保证分类树构建过程中，$DTree$节点与DiffGen分类树节点一一对应，确保树结构在分类过程中的正确性和完整性。
+其中，"AttributePartition"为属性类型，$Cut_{i}$的意义与DiffGen算法\ref{diffgen}中的相同，是所有匿名树中可分裂的属性集合。在分类树构建过程中，通过维护$Cut_{i}$的同步更新，确保$DTree$中的节点与DiffGen分类树节点一一对应，保障分类过程的正确性和完整性。
 
-DiffCon算法的整体流程是基于DiffGen算法对数据集进行匿名化划分，生成完整的$DTree$树结构，然后对噪音分布进行调整，最后在叶节点上返回真实值和$OptNoise$的运算和。对比原算法\ref{diffgen}的返回值，第12行添加的噪音为叶节点的$LapNoise$，应替换为后置求精处理后的$OptNoise$。DiffCon算法的整体流程\ref{diffcon1}概括如下：
+DiffCon算法的整体流程基于$DTree$树结构，通过决策树算法在$DTree$上对数据集进行匿名化划分，在叶节点添加拉普拉斯噪音。除了维护$LapNoise$和$OptNoise$两个变量，这个过程和DiffGen算法基本一样。然后运行噪音分布优化算法$DiffConOpt$。最后在叶节点上返回真实计数值和$OptNoise$的运算和。DiffCon算法的整体流程\ref{diffcon1}概括如下：
 
 \begin{algorithm}
 	\caption{DiffCon算法整体流程} 
 	\label{diffcon1}
 	\begin{algorithmic}[1]
-		\REQUIRE 隐私代价$\varepsilon$,树高$Hight$,数据集$D$。
+		\REQUIRE 隐私代价$\varepsilon$,树高$TH$,数据集$D$。
 		\ENSURE 新的匿名数据集$\hat{D}$。
 		\STATE 初始化分类树根节点、$Cut_{i}$集合，均分$\varepsilon$
 		\STATE 初始化$DTree$的根节点$DTree_{R}$，并且$DTree_{R}->Cut_{i}$ $\leftarrow$ $Cut_{i}$
-		\FOR{i = 1 to $Hight$，$DTree_{i}$表示$DTree$树的第i层节点集}
+		\FOR{i = 1 to $TH$，$DTree_{i}$表示$DTree$树的第i层节点集}
 		\STATE 按DiffGen算法处理连续属性的分裂点,计算$Cut_{i}$中属性的分值并选出属性$v$，同时维护$Cut_{i}$
 		\FOR{对于$DTree_{i}$中的每个节点$DTree_{node}$}
 		\IF{$v$ $\in$ $DTree_{node}$->$Cut_{i}$} 
@@ -278,45 +152,45 @@ DiffCon算法的整体流程是基于DiffGen算法对数据集进行匿名化划
 		\ENDIF 
 		\ENDFOR
 		\ENDFOR
-		\STATE 对$DTree$的每个叶节点有，$LapNoise$ $\leftarrow$ Laplace($S(DiffCon)$/$\varepsilon$)
-		\STATE 以$DTree$树结构为基础，运行优化算法DiffConOpt
-		\RETURN 在叶子节点的数据项上，每个类属性计数为$C$，返回($C$+$OptNoise$))
+		\STATE 往$DTree$的每个叶节点上加$LapNoise$噪音，$LapNoise$ = Laplace($S(DiffCon)$/$\varepsilon$)
+		\STATE 在$DTree$上运行优化算法$DiffConOpt$
+		\RETURN 在叶子节点的数据项上，类属性真实计数值为$C$，返回($C$+$OptNoise$))
 	\end{algorithmic}
 \end{algorithm} 
 
-在算法\ref{diffcon1}中，属性的处理和选择均基于DiffGen算法，保证分类树和$DTree$树的同步构建。从第5行开始，对于挑选出的属性$v$，按照分裂$v$$\rightarrow$$child(v)$，为当前节点的构造子节点集。以此属性的匿名树为依据，有|$child(v)$|个属性则有|$child(v)$|个子节点，在第7行针对每个属性构建子节点，第8行更新节点的$Cut_{i}$域。第14行更新$LapNoise$变量，其中$S(DiffCon)$为重定义的全局敏感性，将在下一小节详细说明。在第15行运行优化算法DiffConOpt之后，$OptNoise$为优化后的噪音量，它将替代$LapNoise$在第16行与类计数的真实值做相加运算，最后返回并生成发布数据集。
+在算法\ref{diffcon1}中，属性的处理和选择均基于DiffGen算法，保证分类树和$DTree$树的同步构建。从第5行开始，对于挑选出的属性$v$，按照分裂$v$$\rightarrow$$child(v)$，为当前节点的构造子节点集。以此属性的匿名树为依据，有|$child(v)$|个属性则有|$child(v)$|个子节点，在第7行针对每个属性构建子节点，第8行更新节点的$Cut_{i}$域。第14行更新$LapNoise$变量，其中$S(DiffCon)$为重定义的全局敏感性，将在下一小节详细说明。在第15行运行优化算法$DiffConOpt$之后，$OptNoise$为优化后的噪音量，它将替代$LapNoise$在第16行与类计数的真实值做相加运算，最后返回并生成发布数据集。
 
 \subsection{重定义查询应答模式}
-本小节将基于DiffGen算法的本质模型——一维直方图模型，对查询请求进行量化表述，讨论更改应答模式前后的全局敏感性定义，并给出相关证明。
 
-\subsubsection{原始查询应答方式}
-一维直方图的计数统计可用一系列单位长度项的集合表示，$\mathcal{H}$。数据集$D$的数据域尺寸为Domain，共有n个行项(柱状条)，每个行项$x_{i}$(i$\in$[1,n])的计数值为$C(x_{i})$，那么序列$\mathcal{H}$可表示为
+继\ref{LP_publish}节对直方图发布方式的简单论述，本节从全局敏感性和应答结果噪音量角度对数据发布格式与查询请求间的关系进行量化表述，探讨直方图与基于$TMSC$算法的应答查询模式的区别，并证明更改应答查询模式后的全局敏感性定义，确保不失差分隐私定义。
+
+\subsubsection{一维直方图的查询应答方式}
+
+一维直方图的计数统计可用一系列单位长度项的集合$\mathcal{H}$表示。数据集$D$中共有n个行项(柱状条)，每个行项$x_{i}$(i$\in$[1,n])的计数值为$C(x_{i})$，那么序列$\mathcal{H}$可表示为
 \begin{equation*}
 	\mathcal{H} = \{C(x_{1}),C(x_{2}),...,C(x_{n})\}
 \end{equation*}
-其中，$n \in Domain,\|x_{i}\|_{1} = 1$
+其中，$\|x_{i}\|_{1} = 1$。
 
 \begin{exmp}
 	\label{chap4_exmp}
 	直方图\ref{fig:histogram}可表示为$\mathcal{H}$ = $\{C([15-19]),C([20-24]),C([25-29],C([30-34]),C([35-40])\}$，更进一步$\mathcal{H}$ = \{1,2,3,0,2\}。
 \end{exmp}
 
-由全局敏感性的定义，显然改变某一项$C(x_{i})$得到数据集$D'$，$D$与$D'$在计数查询上的L1距离为1，因此全局敏感性$S(\mathcal{H})$=1。那么以下的基于拉普拉斯加噪算法满足$\varepsilon$-差分隐私：
+由全局敏感性的定义，改变某一项$C(x_{i})$得到数据集$D'$，$D$与$D'$在计数查询上的L1距离为1，因此全局敏感性$S(\mathcal{H})$=1。那么以下的基于拉普拉斯加噪算法满足$\varepsilon$-差分隐私：
 \begin{equation}
 	\label{chap4_lap}
-	\widetilde{\mathcal{H}}(D) = \mathcal{H}(D) + \textit{Laplace}(1/\varepsilon)^m
+	\tilde{\mathcal{H}}(D) = \mathcal{H}(D) + \textit{Laplace}(1/\varepsilon)^m
 \end{equation}
 
-定义查询序列。合法查询请求$\mathcal{Q}$有m个查询项，$[x,y]$表示对于属性值区间$[x-y]$的范围计数查询，$[x,x]$表示单位长度查询。例如，在直方图\ref{fig:histogram}中，[15,15]和[19,19]均表示对于[15-19]数据项的查询，[15,24]表示对[15-24]的年龄范围查询。
+合法查询请求$\mathcal{Q}$有m个查询项，$[x,y]$表示对于属性值区间$[x-y]$的范围计数查询，$[x,x]$表示单位长度查询。例如，在直方图\ref{fig:histogram}中，[15,15]和[19,19]均表示对于[15-19]数据项的查询，[15,24]表示对[15-24]的年龄范围查询。
 因此查询$\mathcal{Q}$表示为
 \[
 	 \mathcal{Q} = \{C([x_{1},y_{1}]),C([x_{2},y_{2}]),...,C([x_{m},y_{m}])\}
 \]
-其中，$m \in Domain,\|x_{i}\|_{1} = 1, \|y_{i}\|_{1} = 1, x_{i} \leqslant y_{i}$
+其中，$\|x_{i}\|_{1} = 1, \|y_{i}\|_{1} = 1, x_{i} \leqslant y_{i}$
 
-DiffGen基于\ref{chap4_lap}式的处理以满足差分隐私定义，数据发布方式基于一维直方图方式，由单位长度数据项组成的序列$\mathcal{H}$表示。在面对$\mathcal{Q}$的范围计数查询需求时，$\mathcal{H}$中数据项线性累加的应答模式和$\widetilde{\mathcal{H}}(D)$的独立加噪方式带来了频率矩阵加噪模型问题，量化表述如下。
-
-对$\mathcal{Q}$中的单个查询项$C([x_{i},y_{i}])$进行应答处理时，需要遍历$\widetilde{\mathcal{H}}(D)$上的分布，返回应答结果$A_{i}(D)$为
+根据\ref{chap2_Linaer}的论述，$\tilde{\mathcal{H}}(D)$的发布格式处理查询需求$\mathcal{Q}$时，属于线性累加的应答查询模式($LinearR$)。因此，对$\mathcal{Q}$中的单个查询项$C([x_{i},y_{i}])$进行应答处理时，返回的应答结果$A_{i}(D)$为
 \begin{equation}
 \label{chap4_answer}
 \begin{split}
@@ -326,16 +200,16 @@ DiffGen基于\ref{chap4_lap}式的处理以满足差分隐私定义，数据发�
 \end{equation}
 其中$ \forall x_{j} \in [x_{i},y_{i}]$。
 
-从$A_{i}(D)$的表达式\ref{chap4_answer}中可以看到，若是返回整个查询序列$\mathcal{Q}$的应答结果，总的噪音累加量为$\sum\limits_m {\sum\limits_j \textit{Laplace}(1/\varepsilon)}$，是个随着真实值同步线性叠加的结果。
+由\ref{chap4_answer}式可以看出，若是返回整个查询序列$\mathcal{Q}$的应答结果，总的噪音累加量为$\sum\limits_m {\sum\limits_j \textit{Laplace}(1/\varepsilon)}$，是个随着真实值等额叠加的结果。
+%应该改为 误差方差的分析，不然TMSC分析不下去了
 
 就表达式\ref{chap4_answer}中的问题，本课题在保持原有单位长度数据项发布方式的基础上，设计新的查询应答模式，并由此重定义全局敏感性。
 
-\subsubsection{基于分类树的查询应答方式}
-对范围查询项来说，处理应答结果时需要对单位长度数据项进行累加运算，但由于需要加噪满足差分隐私定义，因此计算真实结果时同量级的噪音叠加是频率矩阵加噪模型的问题所在。若能尽可能低避免噪音叠加的发生，在大范围查询中发生的噪音叠加次数远小于真实值叠加次数，那么问题显然可以得到优化。
+\subsubsection{基于TMSC的查询应答模式}
 
-本课题设计一种基于分类树的查询应答方式，利用具有一致性特性的树结构，对于满足查询范围的叶节点(单位长度数据项)集合，查找它们的最小公共祖先节点集合并在此集合上做叠加运算。
+由上一节可以看到，应答范围查询时，直方图的$LinearR$模式需要对单位长度数据项进行累加运算，产生的等额噪音叠加是主要的问题所在。若能尽可能地避免噪音叠加的发生，使得的噪音叠加运算远少于真实值的运算，那么问题显然可以得到改善。
 
-继续使用\ref{chap3_exmp}的例子背景，其加噪处理前的一致性树状结构如图\ref{fig4:consistency}。为了简化叙述，仅使用针对“年龄”属性的查询作为示例，例\ref{chap4_exam}对基于一致性树状结构的查询应答方式做了具体表述。
+本课题设计一种基于$DTree$搜索的查询应答模式$TMSC$，利用树节点间的一致性特性，对于满足查询范围的叶节点(单位长度数据项)集合，查找它们的最小公共祖先节点集合作为应答返回。继续使用\ref{chap3_exmp}的例子，其加噪处理前的一致性树状结构如图\ref{fig4:consistency}。为了简化叙述，仅使用针对“年龄”属性的查询作为示例，例\ref{chap4_exam}对基于一致性树状结构的查询应答方式做了具体表述。
 
 \begin{figure}[!htp]
 	\centering
@@ -345,10 +219,11 @@ DiffGen基于\ref{chap4_lap}式的处理以满足差分隐私定义，数据发�
 
 \begin{exmp}
 	\label{chap4_exam}
-数据集发布序列为叶节点数据项集合，即$\mathcal{H}$ = \{$\widetilde{C}(x_{A})$,$\widetilde{C}(x_{B})$,$\widetilde{C}(x_{C})$,$\widetilde{C}(x_{D})$,$\widetilde{C}(x_{E})$\}。现有查询序列$\mathcal{Q}$=\{C([15-19]),C([20-29]),C([15-34]),C([15-40])\}。那么，对于单位长度查询C([15-19])，直接返回节点A的计数值$\widetilde{C}(x_{A})$即可。对于范围查询C([20-29])，由于节点B,C的最小公共祖先节点集为{B,C}，因此返回($\widetilde{C}(x_{B})$+$\widetilde{C}(x_{C})$)；对于C([15-34])，其覆盖节点A,B,C,D的最小公共祖先节点集为{H}，因此返回$\widetilde{C}(x_{H})$；对于C([15-40]，同理寻得A,B,C,D,E的最小公共祖先节点集为{I}，返回$\widetilde{C}(x_{I})$。
+数据集发布序列为叶节点数据项集合，即$\tilde{\mathcal{H}}$ = \{$\tilde{C}(x_{A})$,$\tilde{C}(x_{B})$,$\tilde{C}(x_{C})$,$\tilde{C}(x_{D})$,$\tilde{C}(x_{E})$\}。现有查询序列$\mathcal{Q}$=\{C([15-19]),C([20-29]),C([15-34]),C([15-40])\}。那么，对于单位长度查询C([15-19])，直接返回节点A的计数值$\tilde{C}(x_{A})$即可。对于范围查询C([20-29])，由于节点B,C的最小公共祖先节点集为{B,C}，因此返回($\tilde{C}(x_{B})$+$\tilde{C}(x_{C})$)；对于C([15-34])，其覆盖节点A,B,C,D的最小公共祖先节点集为{H}，因此返回$\tilde{C}(x_{H})$；对于C([15-40]，同理寻得A,B,C,D,E的最小公共祖先节点集为{I}，返回$\tilde{C}(x_{I})$。
 \end{exmp}
 
-可见，这其实是一个树结构上的“最小集合覆盖”问题——寻找最小的能够完全覆盖给定的叶节点集合的父节点集。基于贪心思想，$DTree$树结构的最小集合覆盖算法\ref{msc}描述如下：
+这其实是一个树结构上的“最小集合覆盖”问题——寻找最小的能够完全覆盖给定的叶节点集合的父节点集。基于贪心思想，$DTree$树结构的最小集合覆盖算法$TMSC$描述如下：
+
 \begin{algorithm}
 	\caption{基于$DTree$树结构的最小集合覆盖算法TMSC}\label{euclid}
 	\label{msc}
@@ -373,6 +248,10 @@ DiffGen基于\ref{chap4_lap}式的处理以满足差分隐私定义，数据发�
 
 算法\ref{msc}中，叶节点集合$\AA$为待覆盖集合，返回集合$\Upsilon$为最小的覆盖集合。算法第2行，后序遍历中仅对叶节点做处理。算法第3-6行，对于覆盖范围包含于集合$\AA$的每个叶节点，贪心地向上取尽可能靠近根节点的父节点。第8，9行做更新处理。第10行，当$\AA$为空，则表示$\Upsilon$中的节点集已经完全覆盖初始的$\AA$，返回即可。
 
+\ref{BoostH}节已对基于$TMSC$算法的查询应答模式的数据发布格式做了讨论，此处做简要总结。基于整个$DTree$的节点信息的数据发布格式显然是不可行的方案：(1)加噪后丧失一致性特性。(2)隐私保障力度无法保证。但是在调整噪音分布步骤之后，含噪的$DTree$重获一致性特性，那么采用原先的直方图发布格式$\mathcal{H}$，通过单位长度数据项(叶节点)的叠加即可获非单位长度数据项(非叶子节点)的含噪计数值，从而满足$TMSC$算法中返回父节点计数值的需求。
+
+\subsubsection{重定义全局敏感性}
+
 查询应答方式的改变引起了全局敏感性的改变，因此需要重新定义。
 
 \begin{prop}
@@ -380,18 +259,23 @@ DiffGen基于\ref{chap4_lap}式的处理以满足差分隐私定义，数据发�
 	基于$DTree$的查询应答方式的全局敏感性为其树高$DHeight$。
 \end{prop}
 \begin{proof}
-	若增加或移除一个叶节点(单位长度数据项)$leaf$，那么会影响相关查询范围的计数统计情况。这个范围包括：(1)对于命中$leaf$的单位长度查询的范围，范围大小为1；(2)从$DTree$的根节点到叶节点$leaf$路径上的每个节点所覆盖的查询范围，范围大小为树高$DHeight$。因此，增加或移除一个叶节点$leaf$会影响$DHeight$个范围计数查询情况，根据全局敏感性定义，$S(DTree)$=$DHeight$。
+	若增加或移除一个叶节点(单位长度数据项)$leaf$，那么会影响相关查询范围的计数统计情况。这个范围包括：(1)对于命中$leaf$的单位长度查询的范围，范围大小为1；(2)从$DTree$的根节点到叶节点$leaf$路径上的每个节点所覆盖的查询范围，范围大小为树高$TH$。因此，增加或移除一个叶节点$leaf$会影响$TH$个范围计数查询情况，根据全局敏感性定义，$S(DTree)$=$TH$。
 \end{proof}
 
 由于敏感性的改变，根据命题\ref{DTreeSensitivity}与式子\ref{chap4_lap}，基于拉普拉斯机制的差分隐私算法重定义为：
 \begin{equation}
 \label{chap4_dtree}
-\widetilde{\mathcal{H}}(D) = \mathcal{H}(D) + \textit{Laplace}(DH/\varepsilon)^m
+\widetilde{\mathcal{H}}(D) = \mathcal{H}(D) + \textit{Laplace}(TH/\varepsilon)^m
 \end{equation}
-其中，$m$为发布序列$\mathcal{H}$的长度，即$DTree$中的叶节点个数。
+其中，$m$为发布序列$\mathcal{H}$的维度，即$DTree$中的叶节点个数。相应地，算法\ref{diffcon1}的第14行可具体化为$LapNoise$ $\leftarrow$ Laplace($TH$/$\varepsilon$)。
 
-一般地有$DH$>1，可见此时由于全局敏感性的增加，在叶节点上添加了更大量级的拉普拉斯噪音。因此，算法\ref{diffcon1}的第14行改为$LapNoise$ $\leftarrow$ Laplace($DHeight$/$\varepsilon$)。
-这可能会降低单位长度查询结果的准确性，但是基于一致性树结构的应答模式会大大增加非单位长度的范围查询结果的准确度。
+一般地有$TH$>1，可见此时由于全局敏感性的增加，在叶节点上添加了更大量级的拉普拉斯噪音。这可能会降低单位长度查询结果的准确性，但是基于一致性树结构的应答模式会大大增加非单位长度的范围查询结果的准确度。
+
+%从误差方差或者表达式方面与原来的式子进行比对 否则太粗糙了
+
+
+
+
 %引出树的敏感性，小波和boost里边有，给出定义；研究下DiffGen的敏感性
 
 %给图说明新的应答模式
@@ -400,8 +284,11 @@ DiffGen基于\ref{chap4_lap}式的处理以满足差分隐私定义，数据发�
 
 \subsection{噪音调整算法}
 
-基于一致性约束不仅可重定义查询应答模式与全局敏感性，而且节点间的一致性等式是属性泛化关系前后的固有属性，可作为噪音数值调整的依据。
-以下设计并实现基于任意树结构的噪音调整算法DiffConOpt。它在DiffCon算法整体流程中具有两个作用：(1)在不违背差分隐私定义的同时，优化噪音分布，使得基于TMSC算法的查询应答模式得到的结果集具有更小的误差方差。(2)使得加噪后的$DTree$重获一致性特性，这是基于叶节点的数据发布方案的可行性基础。
+$DTree$节点间的一致性特性是由匿名树泛化关系所决定的节点之间的固有属性，噪音的扰动仅仅是打破了数值等式关系，因此在确保总噪音量不缺失情况下，一致性特性是作为噪音数值调整的依据。
+噪音调整算法$DiffConOpt$在DiffCon算法流程中具有两方面作用：(1)经过噪音分布调整后的$DTree$在节点计数值上重获一致性等式关系，这是采用直方图数据发布格式支持$TMSC$查询应答模式的前提。(2)不失隐私保障力度，保护了$DTree$内部节点的信息安全与联系。
+
+以下设计并实现基于任意树结构的噪音调整算法$DiffConOpt$。
+%它在DiffCon算法整体流程中具有两个作用：(1)在不违背差分隐私定义的同时，优化噪音分布，使得基于TMSC算法的查询应答模式得到的结果集具有更小的误差方差。(2)使得加噪后的$DTree$重获一致性特性，这是基于叶节点的数据发布方案的可行性基础。
 %说明，不恢复一致性，就无法用这个老方法
 %调整2个目的：1，优化噪音分布。2，让老方法可行
 对算法\ref{adjustnoise}做参数说明：$DTree$中的节点$x$的加噪计数表示为$\tilde{x}$，即"LapNoise"变量值；调整后的优化结果为$\vec{x}$，即"OptNoise"的变量值。树$Xtree$是以节点$x$为根节点的子树，$Xtree$的节点总数为$N_{total}(x)$，其中有$N_{leaf}(x)$个叶节点。$x$的父节点为$P(x)$，$x$的子节点集合为$Child(x)$。
@@ -448,5 +335,7 @@ DiffGen基于\ref{chap4_lap}式的处理以满足差分隐私定义，数据发�
 %应该独立出来说，这个抽象过程。虽然采用的是叶节点加噪，但是！效果和所有节点加噪是一样的
 
 最后，采用DiffGen算法的发布方式——基于$DTree$的叶节点统计数据项，供范围计数查询类应用使用。
+
+%误差方差啊
 
 \section{本章小结}
