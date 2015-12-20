@@ -303,51 +303,119 @@ DiffCon算法的整体流程基于$DTree$树结构，通过决策树算法在$DT
 $DTree$节点间的一致性特性是由匿名树泛化关系所决定的节点之间的固有属性，噪音的扰动仅仅是打破了数值等式关系，因此在确保总噪音量不缺失情况下，一致性特性是作为噪音数值调整的依据。
 噪音调整算法$DiffConOpt$在DiffCon算法流程中具有三方面作用：(1)经过噪音分布调整后的$DTree$在节点计数值上重获一致性等式关系，这是采用直方图数据发布格式支持$TMSC$查询应答模式的前提。(2)无论对于单位长度的查询还是范围查询，均能提升查询结果的准确度。(3)不失隐私保障力度，保护了$DTree$内部节点的信息安全与联系。
 
-假设$DTree$中的节点$x$的加噪计数表示为$\tilde{x}$，即"LapNoise"变量值；调整后的优化结果为$\ddot{x}$，即"OptNoise"的变量值。树$Xtree$是以节点$x$为根节点的子树，$Xtree$的节点总数为$N_{total}(x)$，其中有$N_{leaf}(x)$个叶节点。$x$的父节点为$P(x)$，$x$的子节点集合为$Child(x)$。
+假设$DTree$中的节点$x$的加噪计数表示为$\tilde{x}$，即"LapNoise"变量；调整后的优化结果为$\ddot{x}$，即"OptNoise"变量，中间变量记为$\acute{x}$。以节点$x$为根节点的子树中，其节点总数为$N_{total}(x)$，有$N_{leaf}(x)$个叶节点。$x$的父节点为$P_{x}$，$x$的下一层子节点集合为$ChildSet(x)$。
 
-适用于任意树结构的噪音调整算法$DiffConOpt$是个基于最小二乘法思想的具有一致性特性的优化算法，目标式为
-\begin{equation}
-\label{equa_mini}
-\begin{split}
-minimize \sum\limits_{x \in DTree} (\ddot{x} - \tilde{x})^2 \\
-subject\ \ to\ \ \forall x,\ \ \ddot{x} = \sum\limits_{c \in Child(x)} \ddot{c} 
-\end{split}
-\end{equation}
-以下是具体的实现算法\ref{adjustnoise}。
+适用于任意树结构的噪音调整算法$DiffConOpt$是个基于最小二乘法思想的具有一致性特性的优化算法，以下是具体的实现算法\ref{adjustnoise}。
 
 \begin{algorithm}[H]
 	\caption{噪音调整算法DiffConOpt} 
 	\label{adjustnoise}
 	\begin{algorithmic}[1]
 		\REQUIRE $DTree$树
-		\ENSURE 重获一致性特性且噪音分布更优的$DTree$树
+		\ENSURE 重获一致性特性且优化噪音分布的$DTree$树
 		\FOR{后续遍历$DTree$中的每个节点$x$}
 		\IF{ $x$是叶节点}
-		\STATE $\ddot{x}$ $\leftarrow$ $\tilde{x}$ 
+		\STATE $\acute{x}$ $\leftarrow$ $\tilde{x}$ 
 		\ELSE
-		\STATE  $\ddot{x}$ $\leftarrow$ $\frac{{N_{leaf}(x) * \tilde{x} + (N_{total}(x) - N_{leaf}(x)) * \sum\nolimits_{j \in Child(x)} {\ddot{j}}}}{{N_{total}(x)}}$
+		\STATE  $\acute{x}$ $\leftarrow$ $\frac{{N_{leaf}(x) * \tilde{x} + (N_{total}(x) - N_{leaf}(x)) * \sum\nolimits_{v \in ChildSet(x)} {\ddot{v}}}}{{N_{total}(x)}}$
 		\ENDIF
 		\ENDFOR
 		\FOR{先序遍历$DTree$中的每个节点$x$}
 		\IF{ $x$是根节点}
-		\STATE  $\ddot{x}$ $\leftarrow$ $\ddot{x}$
+		\STATE  $\ddot{x}$ $\leftarrow$ $\acute{x}$
 		\ELSE
-		\STATE  $ChildNum$ = ${\sum\nolimits_{j \in Child(x)} {1}}$
-		\STATE  $\ddot{x}$ $\leftarrow$ $\ddot{x} + \frac{{\overrightarrow{P(x)} - \sum\nolimits_{j \in Child(P(x))} {\ddot{j}}}}{ChildNum}$
+	%	\STATE  $ChildNum$ = ${\sum\nolimits_{v \in Child(x)} {1}}$
+		\STATE  $\ddot{x}$ $\leftarrow$ $\acute{x} + \frac{{\ddot{P_{x}} - \sum\nolimits_{v \in ChildSet(P_{x})} {\acute{v}}}}{|ChildSet(P_{x})|}$
 		\ENDIF
 		\ENDFOR
 		\RETURN $DTree$
 	\end{algorithmic}
 \end{algorithm}
 
-通过两次遍历完成算法DiffConOpt。第一次在算法第1行，自底向上的顺序遍历$DTree$的每个节点，求其优化结果。若非叶节点，则进行第5行的调整处理，否则直接以噪音值作为优化值。第二次采用自顶向下的顺序遍历节点，算法第8行开始，对于非根节点进行第13行的调整处理，否则原值返回。最后，发布重获一致性特性且具有更优噪音分布的$DTree$树。对于调整后的噪音分布，在算法\ref{diffcon1}的第14行，可具体化为$LapNoise$ $\leftarrow$ Laplace($TH$/$\varepsilon$)。
+通过两次遍历完成算法DiffConOpt。第一次在算法第1行，自底向上的顺序遍历$DTree$的每个节点，求其优化结果。若非叶节点，则进行第5行的调整处理，否则直接以噪音值作为优化值。第二次采用自顶向下的顺序遍历节点，算法第8行开始，对于非根节点进行第12行的调整处理，否则原值返回；$|ChildSet(P_{x})|$表示集合$ChildSet(P_{x})$的大小，即$P_{x}$的下一层子节点总数。最后，发布重获一致性特性且具有更优噪音分布的$DTree$树。对于调整后的噪音分布，在算法\ref{diffcon1}的第14行，可具体化为$LapNoise$ $\leftarrow$ Laplace($TH$/$\varepsilon$)。
 
-显然，算法\ref{adjustnoise}适用于任意树结构，这对$HBoost$的完全$k$-叉树假设做了扩展。
+算法\ref{adjustnoise}适用于任意树结构，对$HBoost$的完全$k$-叉树情况做了扩展。
 
+\begin{prop}
+	\label{chap4_consistent}
+	对于$DTree$上的每个节点$x$，经过式子
+	\[
+	\ddot{x} = \left\{ 
+	{\begin{array}{*{20}l}
+		\acute{x},  & {\begin{array}{*{20}l}
+			x\text{为叶节点},   \\
+			\end{array} }   \\ 
+		
+		\acute{x} + \frac{{\ddot{P_{x}} - \sum\nolimits_{j \in ChildSet(P_{x})} {\acute{j}}}}{|ChildSet(P_{x})|},  & {\begin{array}{*{20}l}
+			x\text{非叶节点}  \\
+			\end{array} }  \\  
+		\end{array} } \right.
+	\]
+	后，得每个节点的优化值$\ddot{x}$满足基于一致性约束的最小二乘法目标式
+	\begin{equation}
+	\label{equa_l2}
+	\begin{split}
+	minimize \sum\limits_{x \in DTree} (\ddot{x} - \tilde{x})^2 \\
+	subject\ \ to\ \ \forall x,\ \ \ddot{x} = \sum\limits_{c \in ChildSet(x)} \ddot{c} 
+	\end{split}
+	\end{equation}
+\end{prop}
+\begin{proof}
+	对于$DTree$中的除了根节点外的任一节点$x$，其父节点记为$p$，即$p = P_{x}$。以$p$为根的子树$Subtree_{p}$的叶节点集为$LeafSet(p)$。由于一致性特性有
+	\begin{equation}
+		\label{proof1}
+		\begin{split}
+		\ddot{p} &= \sum\nolimits_{v \in ChildSet(p)} {\ddot{v}}\\
+		&= \sum\nolimits_{l \in LeafSet(p)} {\ddot{l}} 
+		\end{split}
+	\end{equation}
+	因此，有$Subtree_{p}$中的节点$a \in Subtree_{p}$，结合\ref{proof1}的关系式，对于子树$Subtree_{P}$，\ref{chap4_consistent}式等价于
+	\[
+	\begin{split}
+	minimize &\sum\limits_{a \in Subtree_{p}} (\ddot{a} - \tilde{a})^2 \\
+	subject\ \ to\ \ \forall a\in Subtree_{p},\ \ \ddot{a} = &\sum\limits_{c \in ChildSet(a)} \ddot{c}\ \text{且}\ \ \ddot{p} = \sum\nolimits_{l \in LeafSet(p)} {\ddot{l}} 
+	\end{split}		
+	\]
+	进一步地，对于节点$a$，用$\sum\limits_{l \in LeafSet(a)} \ddot{l}$替换$\sum\limits_{c \in ChildSet(a)} \ddot{c}$，通过参数代换可转换约束条件为无约束的线性规划问题，有
+	\begin{equation}
+	\label{proof2}
+	\begin{split}
+	minimize \sum\limits_{a \in Subtree_{p}} ((\sum\limits_{l \in LeafSet(a)} \ddot{l}) - \tilde{a})^2\\
+	subject\ \ to\ \ \ddot{p} = \sum\nolimits_{l \in LeafSet(p)} {\ddot{l}} 
+	\end{split}		
+	\end{equation}
+	利用拉格朗日乘数法处理\ref{proof2}式，记$\lambda$为拉格朗日参数，有
+	\[
+		minimize \sum\limits_{a \in Subtree_{p}} ((\sum\limits_{l \in LeafSet(a)} \ddot{l}) - \tilde{a})^2 - \lambda(\ddot{p} - \sum\nolimits_{l \in LeafSet(p)} {\ddot{l}})
+	\]
+	使用对$l$求导的方法求目标式极值。对于每个$LeafSet(p)$中的叶节点$l_{i}$，有
+	\begin{equation}
+	\label{proof3}
+	for\ each\  l_{i} \in LeafSet(p):\ \ 2((\sum\limits_{l_{i} \in LeafSet(a)} \ddot{l_{i}}) - \tilde{a}) = -\lambda 
+	\end{equation}
+	对于$\forall l \in LeafSet(p)$，叠加\ref{proof3}式，并由$\acute{p}$与$\tilde{p}$的递推式得到$\lambda$的表达式
+	\[
+		\lambda = -\frac{\ddot{p}-\sum\nolimits_{v \in ChildSet(p)} {\acute{v}}}{|LeafSet(p)|}
+	\]
+	最后，对$\forall l \in LeafSet(x)$，在$Subtree_{x}$范围内的叶节点，叠加上述等式得到
+	\[
+	\begin{split}
+	\ddot{x} &= \acute{x} - \frac{|LeafSet(p)|}{|ChildSet(p)|}\cdotp \lambda \\
+		&= \acute{x} + \frac{|LeafSet(p)|}{|ChildSet(p)|}\cdotp (\frac{\ddot{p}-\sum\nolimits_{v \in ChildSet(p)}{\acute{v}}}{|LeafSet(p)|})\\
+		&= \acute{x} + \frac{{\ddot{p} - \sum\nolimits_{v \in ChildSet(p)} {\acute{v}}}}{\sum\nolimits_{v \in ChildSet(p)} {1}}\\
+		&= \acute{x} + \frac{\ddot{p} - \sum\nolimits_{v \in ChildSet(p)}{\acute{v}}}{|ChildSet(p)|}\\
+	\end{split}
+	\]
+	
+	当$x$为根节点时，其父节点$p = \varnothing$。因此\label{proof1}式的$\ddot{p} = 0$，由\ref{proof2}的一致性关系从叶节点出发，同样由拉格朗日乘数法推\ref{proof3}式，易证得
+	\[
+		\ddot{x} = \acute{x},\ \ x\ is\ DTree's\ root\ node
+	\]
+	
+	综上，命题得证。
+\end{proof}
 
-证明正确性。  %1，考虑是不是要弄个式子方便证明。 2， 规范下符号，进入代码验证下，感觉不对啊
-
-
+在原始的噪音分布中，由于拉普拉斯加噪是个随机过程，噪音分布不仅不满足一致性关系，并且噪音与真实值之间的距离是“抖动”的——某些节点上的噪音与真实值相差巨大，某些却差距甚小。这种不均衡的噪音分布对噪音误差方差带来了巨大影响。经过算法$DiffConOpt$的调整，噪音分布不仅具有一致性关系，而且分布“平滑”——命题\ref{chap4_consistent}保证了噪音与真实值距离的总平方和最小，整体加噪情况良好。下节通过噪音误差方差的性能分析，将更清楚地看到这点。
 
 \section{性能分析}
 
