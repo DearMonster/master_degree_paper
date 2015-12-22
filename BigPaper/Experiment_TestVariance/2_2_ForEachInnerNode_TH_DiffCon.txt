@@ -1,0 +1,8 @@
+6.26 2.63771
+Node num: 30, Height: 4$
+15.511 4.52937
+Node num: 100, Height: 7$
+25.5588 7.48067
+Node num: 500, Height: 10$
+25.3846 6.10887
+Node num: 2500, Height: 13$
