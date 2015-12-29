@@ -41,7 +41,7 @@
 \section{实验平台及设置}
 
 \subsection{实验平台介绍}
-<<<<<<< HEAD
+
 首先介绍实验的硬件环境：
 \begin{enumerate}
 	\item 处理器：Intel® Core™ i5-3470 @ 3.20GHz，拥有2个物理内核(Physical Core)，利用Hyper-Threading技术实现4个逻辑内核(Logical Core)。
@@ -76,11 +76,11 @@
 	\item 真实分类算法上的实践。误差方差的理论测试难以替代真实场景的应用，因此通过C4.5分类器\cite{C45}来检测发布数据的分类准确度。同时，比对两个不同决策树分类算法的影响：IG(信息增益算法，Information Gain)和Max\cite{max}(最大值算法)，最后分析实验结果。
 \end{enumerate}	
 
-\section{基于误差标准差的测试与分析}
-
-\subsection{单位长度查询} 
-
-单位长度查询实验基于$DTree$树结构，比对3种应答查询模式下叶节点计数值的误差方差。记节点$x$的的真实计数值为$C(x)$，初步方案下含噪计数值为$\tilde{L}_{all}(x)$，DiffGen方式下为$DiffGen(x)$，DiffCon方式下为$DiffCon(x)$。
+\section{单位长度查询的测试与分析} 
+\subsection{实验方案}
+%跑几次，如何取平均
+单位长度查询实验是基于同一$DTree$树结构，比对3种应答查询模式下叶节点计数值的误差方差。由于$DTree$可由树高控制，因此设定4种树高{4,7,10,13}场景。在每一种树高生成的$DTree$树中，分别抽取20，50，100，200个叶节点，统计每个叶节点上的误差标准差。
+记节点$x$的的真实计数值为$C(x)$，初步方案下含噪计数值为$\tilde{L}_{all}(x)$，DiffGen方式下为$DiffGen(x)$，DiffCon方式下为$DiffCon(x)$。
 实验算法如下：
 \begin{algorithm}[H]
 	\caption{单位长度查询实验}
@@ -97,7 +97,54 @@
 	\end{algorithmic}
 \end{algorithm}
 
-\subsection{范围查询} 
+
+
+%平均单位长度的设计
+
+\subsection{实验结果及分析}
+
+单位长度查询的实验结果如图\ref{fig:EachLeaf}，对树高Tree Height = 4,7,10,13的情况分别进行了测试，三种查询应答模式与图例中的标记对应关系如表\ref{chap5_table1}。横坐标是枚举每个抽取到的叶节点，坐标值x表示$Dtree$的第x个叶节点，也就是第x个单位长度数据项；纵坐标是误差标准差的计算值，坐标值y越大，表示标准差越大，单位查询结果稳定性越差，也就是偏离真实结果的距离越大，准确度越低。
+
+\begin{table}[!hpb]
+	\label{chap5_table1}
+	\centering
+		\bicaption[tab:firstone]{表}{查询应答模式与图例标记的对应关系表}{Table}{The relational table between inquiry-response mode and legend}
+		\begin{tabular}{|c|c|c|}
+			\hline
+			$\textbf{查询应答模式}$ & $\textbf{图例标记}$\\
+			\hline
+			$\tilde{L}_{all}(D)$ & $\tilde{L}_{all}$ \\
+			\hline
+			DiffGen($\mathcal{H}$) & DiffGen \\
+			\hline
+			DiffCon($\tilde{\mathcal{H}}_{opt}$) & DiffCon \\
+			\hline
+		\end{tabular}
+\end{table}
+
+
+\begin{figure}[!htp]
+	\centering
+	\includegraphics[width=5.5in]{chap5/EachLeaf}
+	\bicaption[fig:EachLeaf]{图}{单位长度查询的实验结果}{Fig.}{The experimental result for unit-length queries}
+\end{figure}
+
+从实验结果来看，可观测到3个实验现象：(1)对于单位长度查询需求而言，DiffGen返回的应答结果距离真实值最近，并且分布相对稳定。(2)$\tilde{L}_{all}$和DiffCon都不是很稳定，在应答结果准确度上DiffCon优于DiffGen---对于同一X值，绝大部分的DiffCon点的Y值小于DiffGen的，树高4和7的实验结果比较容易看出。(3)随着树高的增加，误差标准差递增(在下个实验中更容易看出)。
+
+导致DiffCon和$\tilde{L}_{all}$的误差标准差分布不稳定以及在应答准确度上均劣于DiffGen的原因，主要在于全局敏感性较大的缘故，都是树高$TH$。更大的全局敏感性决定了需要添加更多的噪音，在每个节点上$Laplace(TH/\varepsilon)$的量级，显然大于DiffGen的$Laplace(1/\varepsilon)$，因此更多的噪音扰动自然而然降低了应答准确度。同时，由于拉普拉斯概率密度函数是按照指数分布变动的布朗运动，更大的全局敏感性导致的是指数式的概率增减，必然加剧了函数结果的随机性，所以$\tilde{L}_{all}$和DiffCon不稳定。
+
+\begin{figure}[!htp]
+	\centering
+	\includegraphics[width=5.3in]{chap5/average_eachleaf}
+	\bicaption[fig:average_eachleaf]{图}{单位长度查询的实验结果}{Fig.}{The experimental result for unit-length queries}
+\end{figure}
+
+平均单位长度查询的误差标准差实验结果如图\ref{fig:average_eachleaf}，横坐标表示树高，纵坐标表示误差标准差的计算值。由实验结果观察到2个现象：(1)DiffGen返回的应答结果准确度最优，DiffCon次之，$\tilde{L}_{all}$最差。此现象的原因分析前文已论述过。(2)三种应答查询模式随着树高的增加，误差标准差随之增加(DiffGen起伏较小，但经多组实验观测也满足这个规律)，产生这个现象的原因在于全局敏感性的定义上。随着树高的增加，由于$DTree$构建算法\ref{diffgen}中需要对隐私代价$\varepsilon$根据树高进行切分。显然，随着树高的增加，切分得越细，作为加噪参数分母部分的${\varepsilon}'$越小，噪音量级$Laplace(S(\mathcal{F})/{\varepsilon}')$越大。
+
+
+
+\section{范围查询的测试与分析}
+\subsection{实验方案}
 
 \begin{algorithm}[H]
 	\caption{范围查询实验}
@@ -114,6 +161,8 @@
 	\end{algorithmic}
 \end{algorithm}
 
+
+\subsection{实验结果及分析}
 
 \section{面向分类算法的测试与分析}
 
