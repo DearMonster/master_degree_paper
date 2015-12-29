@@ -20,8 +20,10 @@
 % 应该是 每个error(i)，有new - baseline  与  noise - baseline。然后  sum[error(i)]
 
 % 2，内部节点。一样 也是5个图
-% 横坐标 第i个节点，纵坐标 标准差  x 4（4个高度，4，7,10,13）2,1
+%\part{title} 横坐标 第i个节点，纵坐标 标准差  x 4（4个高度，4，7,10,13）2,1
 % 横坐标  高度，纵坐标平均每个节点的标准差2,2
+
+
 
 % 3, 范围查询 。首先还是单点，内部节点的单点。比对 已调整/未调整 的差别，此时不比叶节点了
 % 然后是范围查询情况，扯扯淡 因为没法设计啊  好像能设计诶 。 通过 c45肯定可以说明
@@ -32,35 +34,91 @@
 
 \section{引言}
 
-在前面的章节中我们已经介绍了智能电网的相关背景知识，明确了非法用电行为的社会层面与经济层面的危害，针对该问题完成了数学建模，并从数学建模问题的解决出发，设计实现了适应性分布式智能电网非法用电行为检测算法。前述章节中，我们详细叙述了系统的整体设计理念和集群、模块等的部署实现。我们借助Openstack Swift 和 Keystone 等开源数据分布式存储构件搭建了系统数据存储平台，基于适应性分布式智能电网非法用电行为检测算法编写实现预警模块，预警计算结果获取后，经由Echarts可视化框架实现数据的动态可视化，将可疑用户的相关电力消费数据信息提交给一线运维人员，并给其提供可视化操作调取界面，借助人脑的创造性和数据分析能力，更为精准地捕获非法用电行为。
+在前面的章节，我们已经介绍了面向分类应用的差分隐私算法在范围计数查询需求中存在的噪音线性叠加的问题，探讨了问题的频率矩阵加噪模型本质。接着详细介绍基础算法DiffGen与基于直方图发布方式的优化方案，DiffGen的匿名化过程决定其拥有一致性特性，这是二者之间的联系基础。然后说明DiffGen具有一维直方图特性，从树状组织结构和一致性约束出发，设计并实现优化算法DiffCon。在DiffCon中，设计了新的应答查询模式和全局敏感性定义，并调整噪音分布已达到在单位和范围查询情况均获得较好性能的目的。最后从理论角度，由误差方差对优化性能做了讨论总结。
 
-本章节将针对上述系统进行仿真模拟实验。主要工作包括：搭建实验平台；针对各模块的功能、性能等参数设计实验方案；获取实验结果后，就实验结果显示的系统的特性进行分析说明。
+本章节将在多个方面对DiffCon算法做比对实验，通过真实数据集测试算法准确度性能，以及基于$TMSC$算查询应答模式的噪音误差方差表现。主要工作包括：实验数据集、平台介绍；实验方案的设计；就实验结果进行分析说明。
 
-\section{实验平台搭建}
+\section{实验平台及设置}
 
-\subsection{Mosaik 分布式仿真器}
+\subsection{实验平台介绍}
+首先介绍实验的硬件环境：
+\begin{enumerate}
+	\item 处理器：Intel® Core™ i5-3470 @ 3.20GHz，拥有2个物理内核(Physical Core)，利用Hyper-Threading技术实现4个逻辑内核(Logical Core)。
+	\item 内存：16G
+	\item 硬盘：500G
+\end{enumerate}
+
+软件环境为：
+\begin{enumerate}
+	\item 操作系统为Windows 7旗舰版
+	\item 编码语言为C++，采用Microsoft Visual Studio Community 2013集成开发环境。
+	\item 使用matplotlib绘图
+\end{enumerate}
+
+\subsection{数据集简介}
+
+实验部分的所有测试均基于真实数据集Adult\footnote{\url{https://archive.ics.uci.edu/ml/datasets/Adult}}\cite{adult}。它共有48863个样本，由6个连续属性、8个离散属性构成，类属性是对收入水平的判断，有2个两属性值“$\leqslant$50$K$”和“$>$50$K$”。所有的属性及属性值显示如图\ref{fig:adult}：
+
+\begin{figure}[!htp]
+	\centering
+	\includegraphics[width=5.8in]{chap5/adult}
+	\bicaption[fig:adult]{图}{Adult数据集中的属性及属性值}{Fig.}{The attributes and attribte values in Adult dataset}
+\end{figure}
+
+由于在Adult数据集中存在着属性缺失的样本，因此在使用前需要进行处理。剔除不完整的样本之后，最终得到45222个可用的完整样本。
+
+\section{实验设计概览}
+
+本课题的目的是提升发布数据可用性，即提高数据在后续应用中的分类准确度，以此作为算法好坏的标准。因此，我们从理论测试和实践两个角度设计实验，概括如下：
+\begin{enumerate}
+	\item 验证理论分析结果。在\ref{theory analysis}节中，我们使用噪音的误差方差来评价算法的好与坏，作为衡量发布数据可用性的标杆。因此，在实验的第一部分中，我们比对三种不同应答查询模式下的误差方差：(1)往每个树节点加噪的初步方案$\tilde{L}_{all}(D)$。(2)基础算法DiffGen方式，即直方图模型$\mathcal{H}$，全局敏感性为1。(3)本课题的优化算法DiffCon方式$\tilde{\mathcal{H}}_{opt}$。在实验场景设计上，我们从单位长度查询和范围查询两个方面进行测试。方差能够使得两种数据的差距更加明显，但是，关注单一数据时，数据趋势的抖动会加剧，并且会导致实验图坐标的粒度太大，成倍淡化数值较小的数据分布特征。因此，采用标准差作为观察值。
+	\item 真实分类算法上的实践。误差方差的理论测试难以替代真实场景的应用，因此通过C4.5分类器\cite{C45}来检测发布数据的分类准确度。同时，比对两个不同决策树分类算法的影响：IG(信息增益算法，Information Gain)和Max\cite{max}(最大值算法)，最后分析实验结果。
+\end{enumerate}	
+
+\section{基于误差标准差的测试与分析}
+
+\subsection{单位长度查询} 
+
+单位长度查询实验基于$DTree$树结构，比对3种应答查询模式下叶节点计数值的误差方差。记节点$x$的的真实计数值为$C(x)$，初步方案下含噪计数值为$\tilde{L}_{all}(x)$，DiffGen方式下为$DiffGen(x)$，DiffCon方式下为$DiffCon(x)$。
+实验算法如下：
+\begin{algorithm}[H]
+	\caption{单位长度查询实验}
+	\begin{algorithmic}[1]
+		\REQUIRE $DTree$树
+		\ENSURE 叶节点数据项在三种查询应答模式下的误差标准差集合$\Upsilon_{all}$,$\Upsilon_{DiffGen}$,$\Upsilon_{DiffCon}$
+		初始化, $\Upsilon_{all}$,$\Upsilon_{DiffGen}$,$\Upsilon_{DiffCon}$ $\leftarrow$ $\varnothing$
+		\FOR{$DTree$中的第i个叶节点$leaf_{i}$}
+		\STATE $\Upsilon_{all}$ $\leftarrow$ $\Upsilon_{all}$ $\bigcup$ $\sqrt {(\tilde{L}_{all}(leaf_{i})-C(leaf_{i}))^2}$
+		\STATE $\Upsilon_{DiffGen}$ $\leftarrow$ $\Upsilon_{DiffGen}$ $\bigcup$ $\sqrt {(DiffGen(leaf_{i})-C(leaf_{i}))^2}$
+		\STATE $\Upsilon_{DiffCon}$ $\leftarrow$ $\Upsilon_{DiffCon}$ $\bigcup$ $\sqrt {(DiffCon(leaf_{i})-C(leaf_{i}))^2}$
+		\ENDFOR
+		\RETURN $\Upsilon_{all}$,$\Upsilon_{DiffGen}$,$\Upsilon_{DiffCon}$
+	\end{algorithmic}
+\end{algorithm}
+
+\subsection{范围查询} 
+
+\begin{algorithm}[H]
+	\caption{范围查询实验}
+	\begin{algorithmic}[1]
+		\REQUIRE $DTree$树
+		\ENSURE 叶节点数据项在三种查询应答模式下的误差标准差集合$\Upsilon_{all}$,$\Upsilon_{DiffGen}$,$\Upsilon_{DiffCon}$
+		初始化, $\Upsilon_{all}$,$\Upsilon_{DiffGen}$,$\Upsilon_{DiffCon}$ $\leftarrow$ $\varnothing$
+		\FOR{$DTree$中的第i个叶节点$leaf_{i}$}
+		\STATE $\Upsilon_{all}$ $\leftarrow$ $\Upsilon_{all}$ $\bigcup$ $\sqrt {(\tilde{L}_{all}(leaf_{i})-C(leaf_{i}))^2}$
+		\STATE $\Upsilon_{DiffGen}$ $\leftarrow$ $\Upsilon_{DiffGen}$ $\bigcup$ $\sqrt {(DiffGen(leaf_{i})-C(leaf_{i}))^2}$
+		\STATE $\Upsilon_{DiffCon}$ $\leftarrow$ $\Upsilon_{DiffCon}$ $\bigcup$ $\sqrt {(DiffCon(leaf_{i})-C(leaf_{i}))^2}$
+		\ENDFOR
+		\RETURN $\Upsilon_{all}$,$\Upsilon_{DiffGen}$,$\Upsilon_{DiffCon}$
+	\end{algorithmic}
+\end{algorithm}
 
 
+\section{面向分类算法的测试与分析}
 
-Mosaik本身并不强制常态数据仿真器的实现方式、编写语言、运行环境等因素（即便这些仿真器有各自单独的事件处理循环节和进程信息），Mosaik只是负责同步这些仿真器进程，并管理它们相互间的数据交互。当然，要实现这一点，需要仿真器在数据的输入和输出实现时参照Mosaik数据交换接口标准编写。Mosaik提供一整套的数据交换API给仿真器以使其能与Mosaik框架本身交互；Mosaik针对不同类型的仿真器进程（python、shell、exe等等）实现对应的处理器（handler）；Mosaik允许仿真场景的建模过程引入多种不同类型的仿真器并依据步频调度各仿真器的运行流程，管理数据交换。
+\subsection{实验方案}
 
-Mosaik主体由Python 3 实现，但其仿真API实现了完全的语言屏蔽，即仿真器本身的编写可扩展至Python 2， Java， C，matlab或者其他任何编程语言。故此Mosaik提供了一整套的自由可扩展的智能电网场景仿真模拟框架。
-
-Mosaik本身的实现较为繁杂，不过其核心模块主要包含四块：1）mosaik Sim API 仿真通用接口； 2）Scenario API 场景设置接口； 3）Simulator Manager 模拟器管理器；4）simulator 模拟器。下面将详细介绍这四个核心模块：
-
-mosaik Sim API 仿真通用接口: Mosaik 使用通用网络通信机制套接字（Socket）和JSON编码的信息来与模拟器交互，此层交互机制称之为底层接口（low level API）。对于特定的编程语言，Mosaik 提供了相对更为专门的高层接口（high level API），实现网络相关各部件互联，并给开发者提供抽象基类，帮助其在该基类的基础上实现自己的模拟器类。图\ref{fig:mosaik-api}所示即为Sim API的数据通路。
-    
+\subsection{实验结果及分析}    
 
 \section{本章小结}
 
-在本章中我们就上章中部署实现的智能电网非法用电行为可视化监控检测平台进行实验分析。
-
-实验的仿真模拟环境是基于Mosaik智能电网电力数据仿真框架搭建的，Mosaik是Steffen Schütte 和Stefan Scherfke等人编写的一套面向智能电网仿真模拟的分布式框架。其主要目标是使用已有的常态上下文中的数据仿真器（用户自主实现）来实现给定智能电网场景下的动态电力交互模拟。实验运行的基础操作系统为Ubuntu14.04. 仿真数据取自University of Massachusetts Amherst的Smart*项目，该项目研究探索智能家居的可持续发展特性，其采样收集了400户家庭一天当中精确到每一分钟的用电量，并将该电力数据集开放下载。
-
-实验主要从两方面展开：功能测试和性能测试。其中功能测试主要包括：验证基于Openstack Swift的分布式数据存储平台的功能与使用效果，验证面向智能电网非法用电行为检测的数据可视化平台的功能与使用效果；性能测试则包括：测试基于Openstack Swift的分布式数据存储平台在电网内住户电力数据读写时的性能表现，测试非法用电行为检测预警系统的性能表现。
-
-针对Swift分布式数据存储平台的性能测试数据结果分析发现，无论是并发式写入还是并发式读取，Swift集群随并发数增大，平均响应时间也在不断增大，也即是说性能下降。对于并发式读取，5到100并发数内，平均响应时间增长缓慢，但当并发数大于400后，整体响应时间急剧增大，并发数为2560时，平均响应时间约为1秒；对于并发式写入，情况基本相同，并发数达到2560时，平均响应时间约为3秒。从系统整体运行来看，用户数据的采样最小时间间隔为1分钟，在此处存储集群呈现的最大延迟不超过10秒，从应用的时间数量级上来作比较，Swift的性能表现还是卓越的。
-
-针对非法用电行为检测预警系统的性能测试数据结果分析发现，随电网拓扑中的小区数目的上升，检测的响应时间不断增长。当小区数初始为10时，检测反馈结果只需0.5hour，当增至160个小区时，检测反馈结果就需要3.5个小时才能获取了。这一点从算法的运行效率角度分析不难得出，检测算法虽然以小区为单位输入，简化了网络拓扑，但随小区数目上升，其采样的节点数目和周期数目都在增长，且各节点间的数据交互还需要耗费相当的时间，算法运行结束的标志在于获取了全部小区的诚信参数值，这就需要所有的数据在计算完毕后传送到中心计算节点。故此有长达数小时的延迟就不奇怪了，相对于其他解决方案长达数月的分析周期，本预警平台的效率还是相当高的；随小区数目增大，预警系统的检测精度呈现下降趋势，且小区级的检测精度较诸住户级的检测精度要高，从算法运行过程分析，随小区数目增大，需要计算遍历的矩阵数目越多，检测算法愈发不稳定，折线图中的精度震荡现象也说明了这一点。同时，小区中非法用电住户的比例对于算法的检测精度影响不大。本系统首先检测的是小区级别的非法用电行为，而测试结果显示，这一级别系统检测精度虽然也在震荡下降，不过在相当小区数目下，其精度仍有70\%以上，相比其他机器学习等方案，性能可以说是优秀的。
-
-下一章将就全文内容进行总结，并分析系统的创新点。

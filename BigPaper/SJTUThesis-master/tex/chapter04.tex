@@ -243,7 +243,7 @@ DiffCon算法的整体流程基于$DTree$树结构，通过决策树算法在$DT
 	\caption{基于$DTree$树结构的最小集合覆盖算法TMSC}\label{euclid}
 	\label{msc}
 	\begin{algorithmic}[1]
-		\REQUIRE $DTtree$树结构, 待查询的属性范围$\mathbb{A}$
+		\REQUIRE $DTree$树结构, 待查询的属性范围$\mathbb{A}$
 		\ENSURE 最小覆盖集合$\Upsilon$
 		初始化 $\Upsilon$, $\Upsilon$ $\leftarrow$ $\varnothing$
 		\FOR{后续遍历$DTree$中的每个叶节点$leaf$}
@@ -418,7 +418,7 @@ $DTree$节点间的一致性特性是由匿名树泛化关系所决定的节点�
 在原始的噪音分布中，由于拉普拉斯加噪是个随机过程，噪音分布不仅不满足一致性关系，并且噪音与真实值之间的距离是“抖动”的——某些节点上的噪音与真实值相差巨大，某些却差距甚小。这种不均衡的噪音分布对噪音误差方差带来了巨大影响。经过算法$DiffConOpt$的调整，噪音分布不仅具有一致性关系，而且分布“平滑”——命题\ref{chap4_consistent}保证了噪音与真实值距离的总平方和最小，整体加噪情况良好。下节通过噪音误差方差的性能分析，将更清楚地看到这点。
 
 \section{性能分析}
-
+\label{theory analysis}
 对于查询请求$\mathcal{Q}$中的第i个查询项，我们记\ref{linear_error}式的直方图发布方式的误差方差为$error_{Histog}^{\mathcal{Q}_{i}} = \frac{2|y_{i}-x_{i}|}{\varepsilon^2} = O(\frac{|y_{i}-x_{i}|}{\varepsilon^2})$。对于整个请求$\mathcal{Q}$，其误差方差为$error_{Histog}^{\mathcal{Q}}$
 \begin{equation}
 \label{linear_error2}
@@ -441,14 +441,14 @@ error_{\tilde{L}_{all}}^{\mathcal{Q}} = \sum\limits_{j \in \Upsilon} error_{var}
 \]
 
 %1，说明单位长度也好。2，范围上的好处
-现讨论经过算法$DiffConOpt$优化后的直方图发布格式$\tilde{\mathcal{H}}_{opt}$的误差方差$error_{\tilde{\mathcal{H}}_{opt}}^{\mathcal{Q}}$。
+现在讨论经过算法$DiffConOpt$优化后的应答查询模式，表示为$\tilde{\mathcal{H}}_{opt}$，其误差方差为$error_{\tilde{\mathcal{H}}_{opt}}^{\mathcal{Q}}$。
 
 \begin{prop}
 	\label{chap4_prop5}
 	$error_{\tilde{\mathcal{H}}_{opt}}^{\mathcal{Q}} = O(\frac{TH^3}{\varepsilon^2})$
 \end{prop}
 \begin{proof}
-	根据高斯-马尔科夫定理(Gauss–Markov theory)\cite{gauss_markov}，最小二乘估量值是具有最小方差的估量。在\ref{equa_mini}式中，$\ddot{x}$是$\tilde{x}$的最小二乘估量值。由$\tilde{x} \in \tilde{L}_{all}(D)$，则$error_{\tilde{\mathcal{H}}_{opt}}^{\ddot{x}} \leqslant error_{\tilde{L}_{all}}^{\tilde{x}} = \frac{2 \cdotp TH^2}{\varepsilon^2}$。对$\mathcal{Q}$中的任一项$C([x_{i},y_{i}])$，最多通过$k\times TH$个节点的组合能返回应答。因此有$error_{\tilde{\mathcal{H}}_{opt}}^{\mathcal{Q}} \leqslant k \times TH \times \frac{2 \cdotp TH^2}{\varepsilon^2} = O(\frac{TH^3}{\varepsilon^2})$。
+	根据高斯-马尔科夫定理(Gauss–Markov theory)\cite{gauss_markov}，最小二乘估量值是具有最小方差的估量。在\ref{equa_l2}式中，$\ddot{x}$是$\tilde{x}$的最小二乘估量值。由$\tilde{x} \in \tilde{L}_{all}(D)$，则$error_{\tilde{\mathcal{H}}_{opt}}^{\ddot{x}} \leqslant error_{\tilde{L}_{all}}^{\tilde{x}} = \frac{2 \cdotp TH^2}{\varepsilon^2}$。对$\mathcal{Q}$中的任一项$C([x_{i},y_{i}])$，最多通过$k\times TH$个节点的组合能返回应答。因此有$error_{\tilde{\mathcal{H}}_{opt}}^{\mathcal{Q}} \leqslant k \times TH \times \frac{2 \cdotp TH^2}{\varepsilon^2} = O(\frac{TH^3}{\varepsilon^2})$。
 \end{proof}
 
 进一步，比较$error_{\tilde{\mathcal{H}}_{opt}}^{\mathcal{Q}}$与$error_{\tilde{L}_{all}}^{\mathcal{Q}}$的大小关系。由于$k$仅仅表示最大分支数的取值，其他节点的分支数不确定，并且查询范围的细微区别也能使得应答集合$\Upsilon$大大不同，因此在大小比较与证明上通过$k$值和$TMSC$的最差应答策略取上届(Bound)关系式。
