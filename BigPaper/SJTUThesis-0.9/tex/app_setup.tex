@@ -1,44 +1,172 @@
 %# -*- coding: utf-8-unix -*-
-\chapter{搭建模板编译环境}
+\chapter{命题证明}
+\label{proof}
+\section{DiffGen算法的相关特性}
 
-\section{安装TeX发行版}
+\subsection{唯一性}
 
-\subsection{Mac OS X}
+\begin{prop}
+	(DiffGen算法的唯一性)DiffGen分类树中，叶节点的属性值分布具有唯一性，即在所有叶节点上，不存在相同的两个数据项。
+\end{prop}
+\begin{proof}
+	假设命题为假，即在DiffGen分类树中，存在两个相同属性值分布的叶节点，也就是对于某一属性值集合为\{a,b,c\}的叶节点A，存在另一属性值集合为\{a,b,c\}的叶节点B，且A，B不为同一节点。
+	
+	根据分类树，寻找A，B的最小公共祖先节点C，得到节点C的分裂属性Ca及Ca的匿名树。由于A与B相交，显然Ca的匿名树在Ca上的划分产生了两个一样的属性值x，x$\in$\{a,b,c\}。具有重复属性值x的结论与匿名树的定义矛盾。因此，命题\ref{chap4_prop1}为真。
+\end{proof}
 
-Mac用户可以从MacTeX主页\footnote{\url{https://tug.org/mactex/}}下载MacTeX 2015。
-也可以通过brew包管理器\footnote{\url{http://caskroom.io}}安装MacTeX 2015。
+\subsection{完整性}
 
-\begin{lstlisting}[basicstyle=\small\ttfamily, numbers=none]
-brew cask install mactex
-\end{lstlisting}
+\begin{prop}
+	(DiffGen算法的完整性)DiffGen分类树的构建过程中，每次属性的划分具有完整性，即对于某次分裂$v$$\rightarrow$$child(v)$，$child(v)$中的每个属性值在$Cut_{i}$中能够完整更新。
+\end{prop}
+\begin{proof}
+	在DiffGen算法\ref{diffgen}的第7行，对挑选节点$v$的分裂操作是严格按照匿名树定义进行的。因此对于$\forall$ $cv$ $\in$ $child(v)$，必然有$cv$ $\in$ $Cut_{i}$。
+\end{proof}
 
-\subsection{Linux}
+\subsection{健壮性}
 
-建议Linux用户使用TeXLive主页\footnote{\url{https://www.tug.org/texlive/}}的脚本来安装TeXLive 2015。
-以下命令将把TeXLive发行版安装到当前用户的家目录下。
-若计划安装一个供系统上所有用户使用的TeXLive，请使用root账户操作。
+\begin{prop}
+	(DiffGen算法的健壮性)对于任意的合法查询，DiffGen返回的应答结果具有绝对健壮性，即对于查询序列中的任一属性值查询，均能在DiffGen分类树上找到应答节点。
+\end{prop}
+\begin{proof}
+	设属性$A$的某一属性值$a$为某个合法查询请求中的查询属性值，且$A$的匿名树结构中$a$的父节点集合为$Fa$，$Fa$为根节点到$a$路径上的属性值集合。若$a$为根节点，即$a$=$Fa$，显然$a$就出现在分类树根节点上，应答节点即为根节点。若$a$$\neq$$Fa$，则$a$在分类树上有两种表现形式。(1)$a$在匿名树上的直接父节点属性值发生了分裂，由于DiffGen算法的完整性特性\ref{chap4_prop2}，则必然能在分类树上找到属性值为$a$的节点。(2)若$a$的间接父节点发生分裂或者属性$A$从未被选中，则在分类树上没有属性值为$a$的节点。但由于$a$$\in$$Fa$，那么在分类树中总能找到应答节点，它在$A$上的属性值为$Fa$中离$a$最近的父节点属性值，最坏情况下返回根节点作为应答。
+	因此，对于合法查询请求中的任一属性值，在DiffGen分类树上总存在可覆盖此属性值的节点，保障所有查询项的完整性。
+\end{proof}
 
-\begin{lstlisting}[basicstyle=\small\ttfamily, numbers=none]
-wget http://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz
-tar xzvpf install-tl-unx.tar.gz
-cd install-tl-20150411/
-./install-tl
-\end{lstlisting}
+\subsection{一致性}
 
-\section{安装中文字体}
+\begin{prop}
 
-\subsection{Mac OS X、Deepin}
+	(DiffGen算法的一致性)在DiffGen分类树上，节点上的数据项之间具有一致性特性，可通过节点的组合运算应答合法查询请求。
+\end{prop}
+\begin{proof}
+	叶节点上属性分布的唯一性保证了应答结果是非冗余的，匿名树和决策树算法的构建过程保证了严格的层级和泛化包含关系，结合完整性\ref{chap4_prop2}、健壮性\ref{chap4_prop3}得证。
+\end{proof}
 
-Mac和Deepin用户双击字体文件即可安装字体。
+\subsection{一维直方图特性}
 
-\subsection{RedHat/CentOS用户}
+\begin{prop}
+	(DiffGen算法的一维直方图特性)DiffGen模型具有一维直方图特性，即在范围查询需求中，DiffGen模型的应答健壮性和发布数据项之间的独立性满足一维直方图特征。
+\end{prop}
+\begin{proof}
+	首先，在应答返回结果上，DiffGen框架具有绝对健壮性和一致性。可通过有限次数的单位数据项组合给合法查询做出应答，使得DiffGen发布的数据项在X轴属性组合上满足一维属性特性。因此，虽然节点中的数据项包含多个属性，但不存在多属性直方图健壮性缺失的问题。%它确保了可通过组合发布的叶节点数据项来应答所有的合法查询请求，
+	其次，DiffGen分类树的构造过程满足差分隐私的水平组合特性\ref{parallel}。由于DiffGen分类树从根节点到叶节点路径构成的数据集两两之间不相交，因此需按树高对隐私预算进行切分，这决定了在应答查询请求时，各叶节点内的数据属性分布在组合处理时是相互独立的(论文\parencite{DiffGen}已证明)，不因多属性分布的影响产生关联，每个叶节点代表单位长度数据项。
+	最后，从多维的类属性分布的Y轴上看，DiffGen模型是多个一维类属性直方图的组合，多个类属性不影响一维直方图特性。如例\ref{chap3_exmp}中，可拆分成“已被录用”和“未被录用”两个类属性的一维直方图。
+\end{proof}
 
-RedHat/CentOS用户请先将字体文件复制到字体目录下，调用fc-cache刷新缓存后即可在TeXLive中使用新字体。
+\section{重定义全局敏感性}
 
-\begin{lstlisting}[basicstyle=\small\ttfamily, numbers=none]
-mkdir ~/.fonts
-cp *.ttf ~/.fonts				# 当前用户可用新字体
-cp *.ttf /usr/share/fonts/local/	# 所有用户可以使用新字体
-fc-cache -f
-\end{lstlisting}
+\begin{prop}
+	基于$DTree$的查询应答方式的全局敏感性为其树高$DHeight$。
+\end{prop}
+\begin{proof}
+	若增加或移除一个叶节点(单位长度数据项)$leaf$，那么会影响相关查询范围的计数统计情况。这个范围包括：(1)对于命中$leaf$的单位长度查询的范围，范围大小为1；(2)从$DTree$的根节点到叶节点$leaf$路径上的每个节点所覆盖的查询范围，范围大小为树高$TH$。因此，增加或移除一个叶节点$leaf$会影响$TH$个范围计数查询情况，根据全局敏感性定义，$S(DTree)$=$TH$。
+\end{proof}
 
+\section{基于一致性约束的最小二乘法优化式证明}
+
+\begin{prop}
+	对于$DTree$上的每个节点$x$，经过式子
+	\[
+	\ddot{x} = \left\{ 
+	{\begin{array}{*{20}l}
+		\acute{x},  & {\begin{array}{*{20}l}
+			x\text{为叶节点},   \\
+			\end{array} }   \\ 
+		
+		\acute{x} + \frac{{\ddot{P_{x}} - \sum\nolimits_{j \in ChildSet(P_{x})} {\acute{j}}}}{|ChildSet(P_{x})|},  & {\begin{array}{*{20}l}
+			x\text{非叶节点}  \\
+			\end{array} }  \\  
+		\end{array} } \right.
+	\]
+	后，得每个节点的优化值$\ddot{x}$满足基于一致性约束的最小二乘法目标式
+	\begin{equation}
+	\begin{split}
+	minimize \sum\limits_{x \in DTree} (\ddot{x} - \tilde{x})^2 \\
+	subject\ \ to\ \ \forall x,\ \ \ddot{x} = \sum\limits_{c \in ChildSet(x)} \ddot{c} 
+	\end{split}
+	\end{equation}
+\end{prop}
+\begin{proof}
+	对于$DTree$中的除了根节点外的任一节点$x$，其父节点记为$p$，即$p = P_{x}$。以$p$为根的子树$Subtree_{p}$的叶节点集为$LeafSet(p)$。由于一致性特性有
+	\begin{equation}
+	\label{pproof1}
+	\begin{split}
+	\ddot{p} &= \sum\nolimits_{v \in ChildSet(p)} {\ddot{v}}\\
+	&= \sum\nolimits_{l \in LeafSet(p)} {\ddot{l}} 
+	\end{split}
+	\end{equation}
+	因此，有$Subtree_{p}$中的节点$a \in Subtree_{p}$，结合\ref{pproof1}的关系式，对于子树$Subtree_{P}$，\ref{chap4_consistent}式等价于
+	\[
+	\begin{split}
+	minimize &\sum\limits_{a \in Subtree_{p}} (\ddot{a} - \tilde{a})^2 \\
+	subject\ \ to\ \ \forall a\in Subtree_{p},\ \ \ddot{a} = &\sum\limits_{c \in ChildSet(a)} \ddot{c}\ \text{且}\ \ \ddot{p} = \sum\nolimits_{l \in LeafSet(p)} {\ddot{l}} 
+	\end{split}		
+	\]
+	进一步地，对于节点$a$，用$\sum\limits_{l \in LeafSet(a)} \ddot{l}$替换$\sum\limits_{c \in ChildSet(a)} \ddot{c}$，通过参数代换可转换约束条件为无约束的线性规划问题，有
+	\begin{equation}
+	\label{pproof2}
+	\begin{split}
+	minimize \sum\limits_{a \in Subtree_{p}} ((\sum\limits_{l \in LeafSet(a)} \ddot{l}) - \tilde{a})^2\\
+	subject\ \ to\ \ \ddot{p} = \sum\nolimits_{l \in LeafSet(p)} {\ddot{l}} 
+	\end{split}		
+	\end{equation}
+	利用拉格朗日乘数法\supercite{lagrange}处理\ref{pproof2}式，记$\lambda$为拉格朗日参数，有
+	\[
+	minimize \sum\limits_{a \in Subtree_{p}} ((\sum\limits_{l \in LeafSet(a)} \ddot{l}) - \tilde{a})^2 - \lambda(\ddot{p} - \sum\nolimits_{l \in LeafSet(p)} {\ddot{l}})
+	\]
+	使用对$l$求导的方法求目标式极值。对于每个$LeafSet(p)$中的叶节点$l_{i}$，有
+	\begin{equation}
+	\label{pproof3}
+	for\ each\  l_{i} \in LeafSet(p):\ \ 2((\sum\limits_{l_{i} \in LeafSet(a)} \ddot{l_{i}}) - \tilde{a}) = -\lambda 
+	\end{equation}
+	对于$\forall l \in LeafSet(p)$，叠加\ref{pproof3}式，并由$\acute{p}$与$\tilde{p}$的递推式得到$\lambda$的表达式
+	\[
+	\lambda = -\frac{\ddot{p}-\sum\nolimits_{v \in ChildSet(p)} {\acute{v}}}{|LeafSet(p)|}
+	\]
+	最后，对$\forall l \in LeafSet(x)$，在$Subtree_{x}$范围内的叶节点，叠加上述等式得到
+	\[
+	\begin{split}
+	\ddot{x} &= \acute{x} - \frac{|LeafSet(p)|}{|ChildSet(p)|}\cdotp \lambda \\
+	&= \acute{x} + \frac{|LeafSet(p)|}{|ChildSet(p)|}\cdotp (\frac{\ddot{p}-\sum\nolimits_{v \in ChildSet(p)}{\acute{v}}}{|LeafSet(p)|})\\
+	&= \acute{x} + \frac{{\ddot{p} - \sum\nolimits_{v \in ChildSet(p)} {\acute{v}}}}{\sum\nolimits_{v \in ChildSet(p)} {1}}\\
+	&= \acute{x} + \frac{\ddot{p} - \sum\nolimits_{v \in ChildSet(p)}{\acute{v}}}{|ChildSet(p)|}\\
+	\end{split}
+	\]
+	
+	当$x$为根节点时，其父节点$p = \varnothing$。因此\ref{pproof1}式的$\ddot{p} = 0$，由\ref{pproof2}的一致性关系从叶节点出发，同样由拉格朗日乘数法推\ref{pproof3}式，易证得
+	\[
+	\ddot{x} = \acute{x},\ \ x\ is\ DTree's\ root\ node
+	\]
+	
+	综上，命题得证。
+\end{proof}
+
+\section{性能的理论分析}
+
+\begin{prop}
+	$error_{\tilde{\mathcal{H}}_{opt}}^{\mathcal{Q}} = O(\frac{TH^3}{\varepsilon^2})$
+\end{prop}
+\begin{proof}
+	根据高斯-马尔科夫定理(Gauss–Markov theory)\supercite{gauss_markov}，最小二乘估量值是具有最小方差的估量。在\ref{equa_l2}式中，$\ddot{x}$是$\tilde{x}$的最小二乘估量值。由$\tilde{x} \in \tilde{L}_{all}(D)$，则$error_{\tilde{\mathcal{H}}_{opt}}^{\ddot{x}} \leqslant error_{\tilde{L}_{all}}^{\tilde{x}} = \frac{2 \cdotp TH^2}{\varepsilon^2}$。对$\mathcal{Q}$中的任一项$C([x_{i},y_{i}])$，最多通过$k\times TH$个节点的组合能返回应答。因此有$error_{\tilde{\mathcal{H}}_{opt}}^{\mathcal{Q}} \leqslant k \times TH \times \frac{2 \cdotp TH^2}{\varepsilon^2} = O(\frac{TH^3}{\varepsilon^2})$。
+\end{proof}
+
+\begin{prop}
+	$error_{\tilde{\mathcal{H}}_{opt}}^{\mathcal{Q}} \leqslant \frac{3 \cdotp error_{\tilde{L}_{all}}^{\mathcal{Q}}}{2(k-1)(TH-2)+k}$
+\end{prop}
+\begin{proof}
+	假设$DTree$的所有叶节点表示范围为[x,y]，$\mathcal{Q}$中的某查询项$\mathcal{Q}_{i}$的查询范围为[x+1,y-1]，也就是说$\mathcal{Q}_{i}$的涉及了除最左叶节点$l_{left}$、最右叶节点$l_{right}$以外的所有其他节点。由于不能充分利用一致性特性寻找最大覆盖集，因此这种情况是$TMSC$算法采取最差的应答策略情况。
+	
+	当$DTree$的两两叶节点间除了根节点外均无的同一父节点，即除了根节点找不到比叶节点表示范围更大的覆盖节点，覆盖率为0。
+	对于$\tilde{L}_{all}$来说，只能通过叶节点的累加结果作返回。因此，$error_{\tilde{L}_{all}}^{\mathcal{Q}_{i}} = (y-x-2) \cdotp TH^2/\varepsilon^2$，表现为最差的噪音等额叠加现象。
+	对于$\tilde{\mathcal{H}}_{opt}$来说，通过运算$\tilde{\mathcal{H}}_{opt}(\text{根节点}) - \tilde{\mathcal{H}}_{opt}(l_{left}) - \tilde{\mathcal{H}}_{opt}(l_{right})$即可返回答案，因此$error_{\tilde{\mathcal{H}}_{opt}}^{\mathcal{Q}_{i}} = \frac{6TH^2}{\varepsilon^2}$。
+	
+	当$DTree$为$k$叉完全树，此时在每层$Dtree$的中能尽可能多地找到覆盖下层节点的父节点，覆盖率最高。
+	对于$\tilde{\mathcal{H}}_{opt}$来说，误差方差不变。
+	对于$\tilde{L}_{all}$来说，第一层根节点没有参与应答，第二层仅仅$k$-2个节点参与应答，除此之外的每层有2($k$-1)个节点参与应答，并且共($TH$-2)层。因此，$error_{\tilde{L}_{all}}^{\mathcal{Q}_{i}} = 2(2(k-1)(TH-2)+k-2+2) \cdotp TH^2/\varepsilon^2$。
+	
+	综上有
+	\[
+	error_{\tilde{\mathcal{H}}_{opt}}^{\mathcal{Q}_{i}} \leqslant \frac{3 \cdotp error_{\tilde{L}_{all}}^{\mathcal{Q}}}{2(k-1)(TH-2)+k} \leqslant \frac{6 \cdotp error_{\tilde{L}_{all}}^{\mathcal{Q}}}{y-x-2}
+	\]
+\end{proof}
