@@ -24,7 +24,7 @@
 
 \begin{defn}
 	
-($\varepsilon$\textsc{-差分隐私})\supercite{Dwork Calibrating} 数据集$D$和$D'$至多相差一条记录，即$|D$$\triangle$$D'|$ $\leqslant$ 1。一个随机算法$\partial$满足$\varepsilon$-差分隐私，当且仅当对于$\partial$任意可能的输出$O$，我们有下式成立：
+($\varepsilon$\textsc{-差分隐私})\supercite{Dwork-Calibrating} 数据集$D$和$D'$至多相差一条记录，即$|D$$\triangle$$D'|$ $\leqslant$ 1。一个随机算法$\partial$满足$\varepsilon$-差分隐私，当且仅当对于$\partial$任意可能的输出$O$，我们有下式成立：
 
 \begin{equation}
   \label{eq:res1}
@@ -39,7 +39,7 @@
 实现差分隐私的主要方法是对真实值添加噪音扰动，而噪音量的量级大小是由全局敏感性(Sensitivity)来定义。它表示数据集发生改变时，某一函数运算在输出结果上产生的最大距离。
 
 \begin{defn}
-	(\textsc{全局敏感性}\supercite{Dwork Calibrating}) 数据集$D$和$D'$至多相差一条记录，即$|D$$\triangle$$D'|$ $\leqslant$ 1。函数$\mathcal{F}$的查询维度为d，并且有$\mathcal{F}$：$D \rightarrow \mathrm{R}^d$。那么，函数$\mathcal{F}$的全局敏感性$S(\mathcal{F})$定义为：
+	(\textsc{全局敏感性})\supercite{Dwork-Calibrating} 数据集$D$和$D'$至多相差一条记录，即$|D$$\triangle$$D'|$ $\leqslant$ 1。函数$\mathcal{F}$的查询维度为d，并且有$\mathcal{F}$：$D \rightarrow \mathrm{R}^d$。那么，函数$\mathcal{F}$的全局敏感性$S(\mathcal{F})$定义为：
 \begin{equation}
 \label{eq:res2}
 	S(\mathcal{F}) = \max \limits_{D,D'} \| \mathcal{F}(D) - \mathcal{F}(D') \|_{1}
@@ -54,7 +54,7 @@
 
 \begin{thm}
 	\label{thm:res1}
-	(\textsc{拉普拉斯机制}\supercite{Dwork Calibrating}) 在数据集$D$中，有函数$\mathcal{F}$: $D\rightarrow \mathrm{R}^d$，若算法$\mathcal{M}$满足下式，则$\mathcal{M}$满足$\varepsilon$-差分隐私：
+	(\textsc{拉普拉斯机制})\supercite{Dwork-Calibrating} 在数据集$D$中，有函数$\mathcal{F}$: $D\rightarrow \mathrm{R}^d$，若算法$\mathcal{M}$满足下式，则$\mathcal{M}$满足$\varepsilon$-差分隐私：
 	\begin{equation}
 	\mathcal{M}(D) = \mathcal{F}(D) + (\textit{Laplace}(S(\mathcal{F})/ \varepsilon)^d
 	\end{equation}
@@ -65,7 +65,7 @@
 指数机制通过设计打分函数对属性进行打分计算，分值越高就有越大的概率被选中。
 \begin{thm}
 	\label{thm:res2}
-	(\textsc{指数机制}\supercite{exponential}) 有数据集$D$，打分函数$\mathcal{F}$: ($D$ $\times$ $O$)$\rightarrow$ $\mathrm{R}$，对每个输出项o$\in$ $O$都对应一个打分值。对于若算法$\mathcal{M}$满足下式，则$\mathcal{M}$满足$\varepsilon$-差分隐私：
+	(\textsc{指数机制})\supercite{exponential} 有数据集$D$，打分函数$\mathcal{F}$: ($D$ $\times$ $O$)$\rightarrow$ $\mathrm{R}$，对每个输出项o$\in$ $O$都对应一个打分值。对于若算法$\mathcal{M}$满足下式，则$\mathcal{M}$满足$\varepsilon$-差分隐私：
 	\begin{equation}
 	\mathcal{M}(D,\mathcal{F}) = \{o \in O: Pr(o)\wasypropto exp(\frac{\varepsilon\mathcal{F}(D,o)}{2S(\mathcal{F})}) \}
 	\end{equation}
@@ -88,11 +88,11 @@
 \end{lem}
 
 \subsubsection{误差方差}
-噪音的引入虽然满足了差分隐私定义，但降低了数据集的准确性，那么如何量化这一准确度损失呢？误差方差是常用的度量稳定性的计算指标，以原数据集分布为准，与加噪结果分布间的误差方差也就是真实值的偏离程度。因此，在本课题研究中使用误差方差作为量化发布数据(加噪数据)准确度损失的指标，衡量其可用性。
+噪音的引入虽然满足了差分隐私定义，但降低了数据集的准确性，那么如何量化这一准确度损失呢?误差方差是常用的度量稳定性的计算指标，以原数据集分布为准，与加噪结果分布间的误差方差也就是真实值的偏离程度。因此，在本课题研究中使用误差方差作为量化发布数据(加噪数据)准确度损失的指标，衡量其可用性。
 定义如下。
 \begin{defn}
 	\label{thm:error}
-	(\textsc{误差方差}$error_{var}$\supercite{Dwork Calibrating}) 在数据集$D$中，有查询函数$\mathcal{F}$: $D\rightarrow \mathrm{R}^d$且满足拉普拉斯机制，$\mathbb{E}$为方差，则查询的第i个元素的误差方差$error_{var}^{i}$及对整个查询Q的误差方差为
+	(\textsc{误差方差}$error_{var}$)\supercite{Dwork-Calibrating}在数据集$D$中，有查询函数$\mathcal{F}$: $D\rightarrow \mathrm{R}^d$且满足拉普拉斯机制，$\mathbb{E}$为方差，则查询的第i个元素的误差方差$error_{var}^{i}$及对整个查询Q的误差方差为
 	\begin{eqnarray}
 	&error_{var}^{i} = \mathbb{E}(\textit{Laplace}(S(\mathcal{F})/ \varepsilon)^2) = 2\frac{S(\mathcal{F})^2}{\varepsilon^2}\\
 	&error_{var}^{Q} = \sum\nolimits_{i \in Q}error_{var}^{i}
@@ -104,7 +104,7 @@
 
 \section{频率矩阵及问题表述}
 
-频率矩阵是数据处理中一种基本的统计模型，在面向分类应用的处理中被广泛使用到。基于频率矩阵实现的差分隐私算法满足了隐私保护需求，但分类应用中的范围计数查询需求引发了新问题---基于单位行项的应答查询模式引起了噪音线性叠加问题。%随着查询维度的增加，累加的噪音值不断逼近真实值，严重影响数据使用性能的扩展性---这也是本课题的焦点问题。
+频率矩阵是数据处理中一种基本的统计模型\supercite{Dwork-Calibrating}，在面向分类应用的处理中被广泛使用到。基于频率矩阵实现的差分隐私算法满足了隐私保护需求，但分类应用中的范围计数查询需求引发了新问题---基于单位行项的应答查询模式引起了噪音线性叠加问题。%随着查询维度的增加，累加的噪音值不断逼近真实值，严重影响数据使用性能的扩展性---这也是本课题的焦点问题。
 本节先介绍频率矩阵模型，接着对数据维度、查询维度进行量化表述，并分析频率矩阵的应答查询模式。
 
 \subsection{频率矩阵}
@@ -156,8 +156,8 @@
 
 可以看到，M决定了Q的查询维度范围，并且随着查询维度的增加，近乎指数级增长的行项数量级会使得数据集D的查表过程变得复杂，时间复杂度为O(E)，并且，在差分隐私算法中还带来了噪音叠加问题。
 
-在典型的基于频率矩阵的差分隐私算法中\supercite{Dwork Calibrating}，Dwork等人通过在频率矩阵的每个行项计数值上添加拉普拉斯噪音的方法实现差分隐私保护，如图\ref{fig2:frequency}(c)。在应答范围查询时，根据其基于行项的应答查询模式，此方案的全局敏感性为1，那么对于单位行项查询结果的噪音方差为$\Theta$(1)。
-若原计数值为C，加噪之后的噪声值$\tilde{C}$为
+在典型的基于频率矩阵的差分隐私算法中，Dwork等人\supercite{Dwork-Calibrating}通过在频率矩阵的每个行项计数值上添加拉普拉斯噪音的方法实现差分隐私保护，如图\ref{fig2:frequency}(c)。在应答范围查询时，根据其基于行项的应答查询模式，此方案的全局敏感性为1，那么对于单位行项查询结果的噪音方差为$\Theta$(1)。
+若原计数值为$C$，加噪之后的噪声值$\tilde{C}$为
 \[
 \tilde{C} = C + Laplace(1/\varepsilon)^d
 \]

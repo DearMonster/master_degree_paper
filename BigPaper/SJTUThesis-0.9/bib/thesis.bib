@@ -31,15 +31,6 @@
   year={2009}
 }
 
-@incollection{Dwork-Calibrating,
-  title={Calibrating noise to sensitivity in private data analysis},
-  author={Dwork, Cynthia and McSherry, Frank and Nissim, Kobbi and Smith, Adam},
-  booktitle={Theory of cryptography},
-  pages={265--284},
-  year={2006},
-  publisher={Springer}
-}
-
 @inproceedings{m-Invariance,
   title={M-invariance: towards privacy preserving re-publication of dynamic datasets},
   author={Xiao, Xiaokui and Tao, Yufei},
@@ -67,6 +58,15 @@
   organization={IEEE}
 }
 
+@inproceedings{closeness,
+  title={t-closeness: Privacy beyond k-anonymity and l-diversity},
+  author={Li, Ninghui and Li, Tiancheng and Venkatasubramanian, Suresh},
+  booktitle={Data Engineering, 2007. ICDE 2007. IEEE 23rd International Conference on},
+  pages={106--115},
+  year={2007},
+  organization={IEEE}
+}
+
 @article{Distributed-Privacy,
   title={Distributed privacy-preserving aggregation of metering data in smart grids},
   author={Rottondi, Cristina and Verticale, Giacomo and Krauss, Christopher},
@@ -78,6 +78,92 @@
   publisher={IEEE}
 }
 
+@book{distortion,
+  title={An integrated framework for database privacy protection},
+  author={Chang, LiWu and Moskowitz, Ira S},
+  year={2001},
+  publisher={Springer}
+}
+
+
+@inproceedings{secret,
+  title={How to generate and exchange secrets},
+  author={Yao, Andrew},
+  booktitle={Foundations of Computer Science, 1986., 27th Annual Symposium on},
+  pages={162--167},
+  year={1986},
+  organization={IEEE}
+}
+
+@article{generalization,
+  title={Achieving k-anonymity privacy protection using generalization and suppression},
+  author={Sweeney, Latanya},
+  journal={International Journal of Uncertainty, Fuzziness and Knowledge-Based Systems},
+  volume={10},
+  number={05},
+  pages={571--588},
+  year={2002},
+  publisher={World Scientific}
+}
+
+@incollection{dwork1,
+  title={Differential privacy},
+  author={Dwork, Cynthia},
+  booktitle={Encyclopedia of Cryptography and Security},
+  pages={338--340},
+  year={2011},
+  publisher={Springer}
+}
+
+@incollection{dwork2,
+  title={Differential privacy: A survey of results},
+  author={Dwork, Cynthia},
+  booktitle={Theory and applications of models of computation},
+  pages={1--19},
+  year={2008},
+  publisher={Springer}
+}
+
+@incollection{Dwork-Calibrating,
+  title={Calibrating noise to sensitivity in private data analysis},
+  author={Dwork, Cynthia and McSherry, Frank and Nissim, Kobbi and Smith, Adam},
+  booktitle={Theory of cryptography},
+  pages={265--284},
+  year={2006},
+  publisher={Springer}
+}
+
+@inproceedings{2007mechanism,
+  title={Mechanism design via differential privacy},
+  author={McSherry, Frank and Talwar, Kunal},
+  booktitle={Foundations of Computer Science, 2007. FOCS'07. 48th Annual IEEE Symposium on},
+  pages={94--103},
+  year={2007},
+  organization={IEEE}
+}
+
+@article{interactive,
+  title={Low-rank mechanism: Optimizing batch queries under differential privacy},
+  author={Yuan, Ganzhao and Zhang, Zhenjie and Winslett, Marianne and Xiao, Xiaokui and Yang, Yin and Hao, Zhifeng},
+  journal={Proceedings of the VLDB Endowment},
+  volume={5},
+  number={11},
+  pages={1352--1363},
+  year={2012},
+  publisher={VLDB Endowment}
+}
+
+@article{non-interactive,
+  title={A learning theory approach to noninteractive database privacy},
+  author={Blum, Avrim and Ligett, Katrina and Roth, Aaron},
+  journal={Journal of the ACM (JACM)},
+  volume={60},
+  number={2},
+  pages={12},
+  year={2013},
+  publisher={ACM}
+}
+
 @article{k-anonymity,
   title={k-anonymity: A model for protecting privacy},
   author={Sweeney, Latanya},
@@ -87,6 +173,16 @@
   pages={557--570},
   year={2002},
   publisher={World Scientific}
+}
+
+@article{dom,
+  title={隐私保护中 K-匿名模型的综述},
+  author={岑婷婷 and 韩建民 and 王基一 and 李细雨},
+  journal={计算机工程与应用},
+  volume={44},
+  number={4},
+  pages={130--134},
+  year={2008}
 }
 
 @article{decision-tree,
@@ -134,6 +230,24 @@
   publisher={ACM}
 }
 
+@inproceedings{information-loss,
+  title={Utility-based anonymization using local recoding},
+  author={Xu, Jian and Wang, Wei and Pei, Jian and Wang, Xiaoyuan and Shi, Baile and Fu, Ada Wai-Chee},
+  booktitle={Proceedings of the 12th ACM SIGKDD international conference on Knowledge discovery and data mining},
+  pages={785--790},
+  year={2006},
+  organization={ACM}
+}
+
+@inproceedings{anonymity-np,
+  title={On the complexity of optimal k-anonymity},
+  author={Meyerson, Adam and Williams, Ryan},
+  booktitle={Proceedings of the twenty-third ACM SIGMOD-SIGACT-SIGART symposium on Principles of database systems},
+  pages={223--228},
+  year={2004},
+  organization={ACM}
+}
+
 @inproceedings{bottom-up-generalization,
   title={Bottom-up generalization: A data mining solution to privacy protection},
   author={Wang, Ke and Yu, Philip S and Chakraborty, Sourav},
@@ -179,12 +293,42 @@
   organization={IEEE}
 }
 
-@inproceedings{DiffGen,
-  title={Differentially private data release for data mining},
-  author={Mohammed, Noman and Chen, Rui and Fung, Benjamin and Yu, Philip S},
-  booktitle={Proceedings of the 17th ACM SIGKDD international conference on Knowledge discovery and data mining},
-  pages={493--501},
+
+@inproceedings{contingency,
+  title={Accurate and efficient private release of datacubes and contingency tables},
+  author={Yaroslavtsev, Grigory and Cormode, Graham and Procopiuc, Cecilia M and Srivastava, Divesh},
+  booktitle={Data Engineering (ICDE), 2013 IEEE 29th International Conference on},
+  pages={745--756},
+  year={2013},
+  organization={IEEE}
+}
+
+@article{dp-histogram,
+  title={Differentially private histogram publication},
+  author={Xu, Jia and Zhang, Zhenjie and Xiao, Xiaokui and Yang, Yin and Yu, Ge and Winslett, Marianne},
+  journal={The VLDB Journal—The International Journal on Very Large Data Bases},
+  volume={22},
+  number={6},
+  pages={797--822},
+  year={2013},
+  publisher={Springer-Verlag New York, Inc.}
+}
+
+@inproceedings{cube,
+  title={Differentially private data cubes: optimizing noise sources and consistency},
+  author={Ding, Bolin and Winslett, Marianne and Han, Jiawei and Li, Zhenhui},
+  booktitle={Proceedings of the 2011 ACM SIGMOD International Conference on Management of data},
+  pages={217--228},
   year={2011},
+  organization={ACM}
+}
+
+@inproceedings{privacy-accuracy-consistency,
+  title={Privacy, accuracy, and consistency too: a holistic solution to contingency table release},
+  author={Barak, Boaz and Chaudhuri, Kamalika and Dwork, Cynthia and Kale, Satyen and McSherry, Frank and Talwar, Kunal},
+  booktitle={Proceedings of the twenty-sixth ACM SIGMOD-SIGACT-SIGART symposium on Principles of database systems},
+  pages={273--282},
+  year={2007},
   organization={ACM}
 }
 
@@ -239,6 +383,15 @@
   year={1998}
 }
 
+@inproceedings{DiffGen,
+  title={Differentially private data release for data mining},
+  author={Mohammed, Noman and Chen, Rui and Fung, Benjamin and Yu, Philip S},
+  booktitle={Proceedings of the 17th ACM SIGKDD international conference on Knowledge discovery and data mining},
+  pages={493--501},
+  year={2011},
+  organization={ACM}
+}
+
 @article{overfitting,
   title={The problem of overfitting},
   author={Hawkins, Douglas M},
@@ -259,25 +412,8 @@
   organization={ACM}
 }
 
-@article{meng2,
-  title={l-diversity: Privacy beyond k-anonymity},
-  author={Machanavajjhala, Ashwin and Kifer, Daniel and Gehrke, Johannes and Venkitasubramaniam, Muthuramakrishnan},
-  journal={ACM Transactions on Knowledge Discovery from Data (TKDD)},
-  volume={1},
-  number={1},
-  pages={3},
-  year={2007},
-  publisher={ACM}
-}
 
-@inproceedings{meng4,
-  title={($\alpha$, k)-anonymity: an enhanced k-anonymity model for privacy preserving data publishing},
-  author={Wong, Raymond Chi-Wing and Li, Jiuyong and Fu, Ada Wai-Chee and Wang, Ke},
-  booktitle={Proceedings of the 12th ACM SIGKDD international conference on Knowledge discovery and data mining},
-  pages={754--759},
-  year={2006},
-  organization={ACM}
-}
+
 
 @inproceedings{gauss_markov,
   title={Interactive privacy via the median mechanism},
@@ -295,6 +431,13 @@
   pages={299--311},
   year={2012},
   organization={ACM}
+}
+
+@article{sparse_data,
+  title={Differentially private publication of sparse data},
+  author={Cormode, Graham and Procopiuc, Magda and Srivastava, Divesh and Tran, Thanh TL},
+  journal={arXiv preprint arXiv:1103.0825},
+  year={2011}
 }
 
 @article{lagrange,
