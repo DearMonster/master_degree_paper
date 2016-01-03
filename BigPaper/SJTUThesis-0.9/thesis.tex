@@ -24,18 +24,21 @@
 \usepackage{multirow}
 \usepackage{bm}
 \usepackage{amsfonts}
-\usepackage{biblatex}
+%\usepackage[unsrt]{biblatex}
+%\usepackage[backend=biber]{biblatex}
 \usepackage{subfigure}
 \usepackage{algorithm}
 \usepackage{algorithmic}
 \usepackage{amsmath,amssymb}
+%\usepackage[square, comma, numbers, sort&compress]{natbib}
+
 
 % 逐个导入参考文献数据库
 \addbibresource{bib/thesis.bib}
 % \addbibresource{bib/chap2.bib}
-
+%\bibliographystyle{unsrt}
 \begin{document}
-
+%\bibliographystyle{unsrt}
 %% 无编号内容：中英文论文封面、授权页
 \include{tex/id}
 \maketitle
@@ -95,7 +98,8 @@
 \backmatter	% 文后无编号部分 
 
 %% 参考资料
-\printbibliography[heading=bibintoc]
+%\printbibliography
+\printbibliography[heading=bibintoc,sorting = unsrt]
 
 %% 致谢、发表论文、申请专利、参与项目、简历
 %% 用于盲审的论文需隐去致谢、发表论文、申请专利、参与的项目
